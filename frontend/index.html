@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DisasterWatch Global — Real-Time Disaster Monitoring & Risk Mapping</title>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet MarkerCluster CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Custom Stylesheet (Pastel Green Theme) -->
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <!-- Application Shell -->
+  <div class="app-container">
+    
+    <!-- Top Header Navigation (Clean, minimal, no symbol, no status indicator, no time, no refresh button) -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-text">
+          <div class="brand-title">DisasterWatch <span class="brand-highlight">Global</span></div>
+          <div class="brand-subtitle">Real-Time Disaster Monitoring & Affected Area Mapping System</div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs (Dashboard, Alert Details, Data Sources - About Project moved to PDF) -->
+      <nav class="nav-tabs" role="tablist">
+        <button class="nav-tab active" data-view="dashboard" role="tab" aria-selected="true">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </button>
+        <button class="nav-tab" data-view="alert-details" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          Alert Details
+        </button>
+        <button class="nav-tab" data-view="data-sources" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          Data Sources & PDF
+        </button>
+      </nav>
+
+      <!-- Right controls area kept clean -->
+      <div class="header-controls">
+        <a href="/api/download-documentation-pdf" target="_blank" class="btn btn-sm btn-outline-sage" title="Download Official Documentation PDF">
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Download PDF</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Subheader Notification Bar -->
+    <div class="sub-header-bar">
+      <div class="last-refreshed-badge">
+        <span class="meta-label">Data Synced:</span>
+        <span class="meta-value" id="last-refreshed-time">Synchronized with Global Telemetry Feeds</span>
+      </div>
+      <div class="live-notice-pill">
+        <span>Worldwide Coverage — Real instrumental events from USGS, Open-Meteo & United Nations GDACS</span>
+      </div>
+    </div>
+
+    <!-- MAIN VIEW CONTAINER -->
+    <main class="main-content">
+      
+      <!-- ================= VIEW 1: DASHBOARD ================= -->
+      <section class="view-panel active" id="view-dashboard">
+        <div class="dashboard-grid">
+          
+          <!-- LEFT SIDEBAR: FILTERS & LEGEND -->
+          <aside class="sidebar-left">
+            
+            <!-- Location Search -->
+            <div class="filter-card">
+              <h3 class="filter-title">
+                <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Location & Region Search
+              </h3>
+              <div class="search-box">
+                <input 
+                  type="text" 
+                  id="search-input" 
+                  placeholder="Search city, country, or coordinates..." 
+                  autocomplete="off"
+                />
+                <button class="search-clear-btn" id="search-clear-btn" title="Clear search">&times;</button>
+              </div>
+              <div class="quick-jump-chips">
+                <button class="chip active-chip" data-coords="20,10" data-zoom="2" title="Global View">Worldwide</button>
+                <button class="chip" data-coords="35.6762,139.6503" data-zoom="5" title="Asia / Tokyo">Tokyo</button>
+                <button class="chip" data-coords="25.7617,-80.1918" data-zoom="5" title="Americas / Miami">Miami</button>
+                <button class="chip" data-coords="51.5074,-0.1278" data-zoom="5" title="Europe / London">London</button>
+                <button class="chip" data-coords="22.5937,78.9629" data-zoom="5" title="India">India</button>
+                <button class="chip" data-coords="-16.9186,145.7781" data-zoom="5" title="Oceania / Cairns">Australia</button>
+                <button class="chip" data-coords="-18.8792,47.5079" data-zoom="5" title="Madagascar Cyclone Basin">Madagascar</button>
+              </div>
+            </div>
+
+            <!-- Geographic Scope Filter -->
+            <div class="filter-card">
+              <h3 class="filter-title">Geographic Scope</h3>
+              <div class="button-toggle-group" id="region-toggle-group">
+                <button class="btn-toggle active" data-region="all">All Global Events</button>
+                <button class="btn-toggle" data-region="india">India & Subcontinent</button>
+              </div>
+            </div>
+
+            <!-- Disaster Type Filter (5 Real Disaster Categories) -->
+            <div class="filter-card">
+              <h3 class="filter-title">Disaster Category</h3>
+              <div class="filter-options" id="disaster-type-filters">
+                <label class="filter-radio-label">
+                  <input type="radio" name="disaster_type" value="All" checked />
+                  <span class="custom-indicator"></span>
+                  <span class="label-text">All Disasters</span>
+                  <span class="count-badge" id="count-all">0</span>
+                </label>
+                <label class="filter-radio-label">
+                  <input type="radio" name="disaster_type" value="Earthquake" />
+                  <span class="custom-indicator dot-earthquake"></span>
+                  <span class="label-text">Earthquakes (USGS & GDACS)</span>
+                  <span class="count-badge" id="count-earthquake">0</span>
+                </label>
+                <label class="filter-radio-label">
+                  <input type="radio" name="disaster_type" value="Cyclone/Storm" />
+                  <span class="custom-indicator dot-cyclone"></span>
+                  <span class="label-text">Cyclones / Storms (GDACS & Winds)</span>
+                  <span class="count-badge" id="count-cyclone">0</span>
+                </label>
+                <label class="filter-radio-label">
+                  <input type="radio" name="disaster_type" value="Flood Risk" />
+                  <span class="custom-indicator dot-flood"></span>
+                  <span class="label-text">Floods (GDACS & Rain Models)</span>
+                  <span class="count-badge" id="count-flood">0</span>
+                </label>
+                <label class="filter-radio-label">
+                  <input type="radio" name="disaster_type" value="Fire" />
+                  <span class="custom-indicator dot-fire"></span>
+                  <span class="label-text">Wildfires & Thermal Hotspots</span>
+                  <span class="count-badge" id="count-fire">0</span>
+                </label>
+                <label class="filter-radio-label">
+                  <input type="radio" name="disaster_type" value="Heatwave" />
+                  <span class="custom-indicator dot-heatwave"></span>
+                  <span class="label-text">Heatwaves & Droughts</span>
+                  <span class="count-badge" id="count-heatwave">0</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Severity Filter -->
+            <div class="filter-card">
+              <h3 class="filter-title">Severity Level</h3>
+              <div class="severity-buttons" id="severity-filters">
+                <button class="severity-btn active" data-severity="All">All</button>
+                <button class="severity-btn sev-low" data-severity="Low">Low</button>
+                <button class="severity-btn sev-med" data-severity="Medium">Medium</button>
+                <button class="severity-btn sev-high" data-severity="High">High</button>
+                <button class="severity-btn sev-crit" data-severity="Critical">Critical</button>
+              </div>
+            </div>
+
+            <!-- Display Toggles -->
+            <div class="filter-card">
+              <h3 class="filter-title">Display Toggles</h3>
+              <div class="toggle-control">
+                <label class="switch">
+                  <input type="checkbox" id="toggle-risk-zones" checked />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">Show Estimated-Risk Zones</span>
+              </div>
+              <div class="toggle-control">
+                <label class="switch">
+                  <input type="checkbox" id="toggle-official-only" />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">Official Alerts Only</span>
+              </div>
+            </div>
+
+            <!-- Map Legend -->
+            <div class="filter-card legend-card">
+              <h3 class="filter-title">Map Legend & Indicators</h3>
+              <div class="legend-grid">
+                <div class="legend-item">
+                  <span class="legend-icon icon-circle-solid" style="background: var(--color-earthquake);"></span>
+                  <span>Earthquake (USGS / GDACS)</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-icon icon-circle-solid" style="background: var(--color-cyclone);"></span>
+                  <span>Cyclone / Gale Storm (GDACS / Open-Meteo)</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-icon icon-circle-dashed" style="border-color: var(--color-flood); background: rgba(100, 181, 246, 0.25);"></span>
+                  <span>Flood (GDACS Alert / Precipitation Model)</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-icon icon-circle-solid" style="background: var(--color-fire);"></span>
+                  <span>Wildfire / Forest Fire (GDACS / NASA FIRMS)</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-icon icon-circle-dashed" style="border-color: var(--color-heatwave); background: rgba(246, 189, 96, 0.25);"></span>
+                  <span>Heatwave Advisory (GDACS / Temp Models)</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-badge badge-solid">Solid Boundary</span>
+                  <span>Confirmed Event / Official Regulatory Alert</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-badge badge-dashed">Dashed Outline</span>
+                  <span>Estimated Risk Zone (Model Calculation)</span>
+                </div>
+              </div>
+            </div>
+
+          </aside>
+
+          <!-- CENTER: INTERACTIVE MAP & TELEMETRY -->
+          <div class="map-stage-container">
+            
+            <!-- Map Top Bar -->
+            <div class="map-top-bar">
+              <div class="map-status-pill">
+                <span class="map-status-dot"></span>
+                <span id="map-events-count-label">Loading global live geospatial feed...</span>
+              </div>
+              <div class="map-action-buttons">
+                <button class="btn btn-sm btn-map-action" id="reset-map-view-btn" title="Reset to Global Map View">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  Reset Global View
+                </button>
+              </div>
+            </div>
+
+            <!-- Leaflet Map Container -->
+            <div id="disaster-map" class="leaflet-map-wrapper"></div>
+            
+            <!-- Map Loading Overlay -->
+            <div class="map-loading-overlay" id="map-loading-overlay">
+              <div class="spinner-box">
+                <div class="spinner"></div>
+                <div class="spinner-text">Synchronizing Global Disaster Telemetry...</div>
+              </div>
+            </div>
+
+            <!-- Map Empty / No Data Overlay -->
+            <div class="map-empty-overlay" id="map-empty-overlay" style="display: none;">
+              <div class="empty-state-box">
+                <div class="empty-icon">🛰️</div>
+                <h3>No Live Events Matching Filters</h3>
+                <p>No disaster records matching your selected filter combination are active right now.</p>
+                <button class="btn btn-sm btn-primary" id="btn-reset-filters">Reset All Filters</button>
+              </div>
+            </div>
+
+            <!-- Bottom Live Telemetry Analytics Chart Card -->
+            <div class="telemetry-analytics-card" id="analytics-card">
+              <div class="card-header-flex">
+                <div class="card-title-group">
+                  <span class="analytics-badge">LIVE TELEMETRY CHART</span>
+                  <h4 class="analytics-title" id="chart-title">Global Seismic & Meteorological Telemetry</h4>
+                </div>
+                <div class="chart-controls">
+                  <button class="btn-chart-tab active" data-chart="seismic">Seismic Magnitudes</button>
+                  <button class="btn-chart-tab" data-chart="weather">Station Rainfall & Wind</button>
+                </div>
+              </div>
+              <div class="chart-wrapper">
+                <canvas id="live-telemetry-chart" height="90"></canvas>
+              </div>
+              <div class="chart-empty-state" id="chart-empty-state" style="display: none;">
+                <p>No active telemetry points to display on chart.</p>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- RIGHT SIDEBAR: METRICS & ALERTS FEED -->
+          <aside class="sidebar-right">
+            
+            <!-- Summary Metric Cards -->
+            <div class="summary-cards-grid">
+              
+              <div class="summary-card card-active">
+                <div class="summary-header">
+                  <span class="summary-label">Active Events</span>
+                  <span class="summary-icon">📡</span>
+                </div>
+                <div class="summary-number" id="metric-active-events">0</div>
+                <div class="summary-subtext">Global live alerts</div>
+              </div>
+
+              <div class="summary-card card-critical">
+                <div class="summary-header">
+                  <span class="summary-label">High / Critical</span>
+                  <span class="summary-icon">⚠️</span>
+                </div>
+                <div class="summary-number" id="metric-high-critical">0</div>
+                <div class="summary-subtext">Priority emergency alerts</div>
+              </div>
+
+              <div class="summary-card card-quakes">
+                <div class="summary-header">
+                  <span class="summary-label">Earthquakes</span>
+                  <span class="summary-icon">⚡</span>
+                </div>
+                <div class="summary-number" id="metric-recent-quakes">0</div>
+                <div class="summary-subtext">USGS & GDACS detections</div>
+              </div>
+
+              <div class="summary-card card-sources">
+                <div class="summary-header">
+                  <span class="summary-label">Sources Online</span>
+                  <span class="summary-icon">🟢</span>
+                </div>
+                <div class="summary-number" id="metric-sources-online">3 / 5</div>
+                <div class="summary-subtext" id="metric-sources-subtext">Verified telemetry feeds</div>
+              </div>
+
+            </div>
+
+            <!-- Recent Alerts List -->
+            <div class="alerts-feed-card">
+              <div class="alerts-feed-header">
+                <div class="feed-header-title">
+                  <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  <span>Real-Time Global Feed</span>
+                </div>
+                <span class="feed-count-badge" id="feed-items-count">0 Events</span>
+              </div>
+
+              <!-- Alerts Scrollable List -->
+              <div class="alerts-list-container" id="alerts-list">
+                <!-- Populated via JavaScript -->
+              </div>
+            </div>
+
+            <!-- Quick Selected Event Details Card -->
+            <div class="selected-alert-preview" id="selected-alert-preview" style="display: none;">
+              <div class="preview-header">
+                <span class="preview-badge" id="prev-type-badge">Selected Event</span>
+                <button class="preview-close-btn" id="prev-close-btn">&times;</button>
+              </div>
+              <h4 class="preview-title" id="prev-title">Click a marker on the map to inspect</h4>
+              <div class="preview-meta">
+                <span class="meta-row"><strong>Location:</strong> <span id="prev-location">--</span></span>
+                <span class="meta-row"><strong>Severity:</strong> <span id="prev-severity-badge">--</span></span>
+                <span class="meta-row"><strong>Status:</strong> <span id="prev-status">--</span></span>
+                <span class="meta-row"><strong>Source:</strong> <span id="prev-source">--</span></span>
+              </div>
+              <div class="preview-rule-box">
+                <span class="rule-label">Calculation Basis:</span>
+                <p class="rule-text" id="prev-rule">--</p>
+              </div>
+              <div class="preview-actions">
+                <button class="btn btn-sm btn-primary" id="prev-view-details-btn">View Full Details & Guidance</button>
+                <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary" id="prev-source-link">Original Source &rarr;</a>
+              </div>
+            </div>
+
+          </aside>
+
+        </div>
+      </section>
+
+      <!-- ================= VIEW 2: ALERT DETAILS ================= -->
+      <section class="view-panel" id="view-alert-details">
+        <div class="details-view-container">
+          
+          <div class="details-nav-back">
+            <button class="btn btn-secondary" id="btn-back-to-dashboard">
+              &larr; Back to Global Dashboard
+            </button>
+          </div>
+
+          <div class="details-card-main" id="details-card-content">
+            <!-- Populated dynamically -->
+            <div class="empty-details-state" id="empty-details-state">
+              <div class="empty-icon">📋</div>
+              <h2>No Alert Selected</h2>
+              <p>Select any event or risk zone from the Live Dashboard map or Recent Alerts list to inspect its physical measurements, calculation details, and official safety guidance.</p>
+              <button class="btn btn-primary" id="btn-go-to-dashboard-from-details">Go to Live Dashboard</button>
+            </div>
+
+            <div class="full-details-wrapper" id="full-details-wrapper" style="display: none;">
+              
+              <!-- Header Info -->
+              <div class="details-header-banner">
+                <div class="header-tags">
+                  <span class="badge-disaster" id="det-disaster-type">Disaster</span>
+                  <span class="badge-severity" id="det-severity">Severity</span>
+                  <span class="badge-status" id="det-status">Status</span>
+                </div>
+                <h1 class="details-headline" id="det-title">Event Title</h1>
+                <div class="details-location-coords" id="det-location">Location string</div>
+              </div>
+
+              <!-- Metrics Grid -->
+              <div class="details-metrics-grid" id="det-metrics-grid">
+                <!-- Dynamically populated key metrics -->
+              </div>
+
+              <!-- Risk Engine Transparent Calculation Box -->
+              <div class="details-section-box calculation-box">
+                <div class="section-title-with-icon">
+                  <span class="section-icon">⚙️</span>
+                  <h3>Risk Engine Evaluation & Audit Trail</h3>
+                </div>
+                <div class="rule-triggered-banner">
+                  <span class="banner-tag">APPLIED RULE & TELEMETRY BASIS:</span>
+                  <p class="banner-rule-text" id="det-rule">Rule explanation</p>
+                </div>
+                <div class="benchmarks-table-wrapper">
+                  <h4>Decision Threshold Benchmarks (Python Risk Engine)</h4>
+                  <table class="benchmark-table" id="det-benchmarks-table">
+                    <!-- Populated dynamically -->
+                  </table>
+                </div>
+              </div>
+
+              <!-- Safety Guidance Box -->
+              <div class="details-section-box safety-box">
+                <div class="section-title-with-icon">
+                  <span class="section-icon">🛡️</span>
+                  <h3>Immediate Safety Guidance</h3>
+                </div>
+                <div class="safety-advisory-pill" id="det-safety-guidance">
+                  Guidance text
+                </div>
+              </div>
+
+              <!-- Source Provenance & Data Lineage -->
+              <div class="details-section-box lineage-box">
+                <div class="section-title-with-icon">
+                  <span class="section-icon">🔗</span>
+                  <h3>Source Provenance & Data Lineage</h3>
+                </div>
+                <div class="lineage-grid">
+                  <div class="lineage-item">
+                    <span class="lineage-label">Reporting Authority:</span>
+                    <span class="lineage-val" id="det-source-name">USGS / GDACS / Open-Meteo</span>
+                  </div>
+                  <div class="lineage-item">
+                    <span class="lineage-label">Event Timestamp (UTC):</span>
+                    <span class="lineage-val" id="det-event-time">--</span>
+                  </div>
+                  <div class="lineage-item">
+                    <span class="lineage-label">Last Database Sync:</span>
+                    <span class="lineage-val" id="det-updated-time">--</span>
+                  </div>
+                  <div class="lineage-item">
+                    <span class="lineage-label">Raw Data Verification Link:</span>
+                    <a href="#" target="_blank" rel="noopener noreferrer" class="link-external" id="det-source-url">Open Original Source Data &rarr;</a>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Required Mandatory Disclaimer in Alert Details -->
+              <div class="mandatory-disclaimer-card">
+                <div class="disclaimer-header">
+                  <span class="disclaimer-icon">⚠️</span>
+                  <strong>MANDATORY EMERGENCY DISCLAIMER</strong>
+                </div>
+                <p class="disclaimer-body">
+                  “This student project is for disaster awareness and monitoring only. Always follow official instructions from local authorities, disaster-management agencies, and emergency services.”
+                </p>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ================= VIEW 3: DATA SOURCES & PDF DOWNLOAD ================= -->
+      <section class="view-panel" id="view-data-sources">
+        <div class="sources-view-container">
+          
+          <div class="view-header-title">
+            <h2>Data Feeds & Telemetry Lineage</h2>
+            <p>Transparent operational status of all live integrations. DisasterWatch enforces an absolute no-fake-data rule: unconfigured or offline feeds are honestly reported.</p>
+          </div>
+
+          <!-- Documentation PDF Download Banner -->
+          <div class="pdf-download-card">
+            <div class="pdf-card-content">
+              <div class="pdf-card-icon">📄</div>
+              <div class="pdf-card-text">
+                <h3>Download Project Documentation (PDF)</h3>
+                <p>Complete academic report containing system architecture, classification taxonomy, detailed mathematical formulations for telemetric risk calculation, and safety protocols.</p>
+              </div>
+            </div>
+            <a href="/api/download-documentation-pdf" target="_blank" class="btn btn-primary btn-download-pdf">
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download PDF Report
+            </a>
+          </div>
+
+          <!-- Sources Status Table -->
+          <div class="table-container">
+            <table class="sources-status-table" id="sources-table">
+              <thead>
+                <tr>
+                  <th>Data Source</th>
+                  <th>Hazard Category</th>
+                  <th>Connection Status</th>
+                  <th>Last Successful Sync</th>
+                  <th>Update Cadence</th>
+                  <th>Integration Lineage & Details</th>
+                  <th>Original Portal</th>
+                </tr>
+              </thead>
+              <tbody id="sources-table-body">
+                <!-- Dynamically populated from /api/sources -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Technical Architecture Notes -->
+          <div class="sources-notes-grid">
+            <div class="note-card">
+              <h4>GDACS (United Nations & European Commission)</h4>
+              <p>Directly integrates the official Global Disaster Alert and Coordination System (UN OCHA / EC JRC). Ingests real live tropical cyclones (with storm name & speed), worldwide flood bulletins, and active forest fires.</p>
+            </div>
+            <div class="note-card">
+              <h4>USGS GeoJSON Worldwide Seismic Network</h4>
+              <p>Connects directly to the United States Geological Survey global network. Retrieves verified magnitude, coordinates, hypocentral depth, and event timestamps for events across all continents and tectonic fault lines.</p>
+            </div>
+            <div class="note-card">
+              <h4>Open-Meteo Meteorological Modeling</h4>
+              <p>Provides live atmospheric observation and forecast data. Used by our Python risk engine to calculate <strong>Estimated Flood Risk</strong>, Gale Wind speeds, and Extreme Heatwave conditions across global stations.</p>
+            </div>
+            <div class="note-card">
+              <h4>NASA FIRMS Active Fires (Configurable)</h4>
+              <p>Designed for VIIRS/MODIS satellite thermal anomaly detection. If an API key is not configured in <code>.env</code>, it displays honest empty status: <em>“Fire source not connected yet”</em>.</p>
+            </div>
+          </div>
+
+          <!-- Audit Refresh History -->
+          <div class="refresh-history-section">
+            <h3>Recent Background Refresh Logs (SQLite Audit Trail)</h3>
+            <div class="table-container compact">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp (UTC)</th>
+                    <th>Feed / Provider</th>
+                    <th>Status</th>
+                    <th>Records Processed</th>
+                    <th>Latency (ms)</th>
+                    <th>Audit Message</th>
+                  </tr>
+                </thead>
+                <tbody id="refresh-history-body">
+                  <!-- Populated from /api/refresh-history -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Global Mandatory Footer -->
+    <footer class="app-footer">
+      <div class="footer-left">
+        <span class="footer-brand">DisasterWatch Global v1.0.0</span>
+        <span class="footer-dot">•</span>
+        <span>Decision Support & Awareness Portal</span>
+      </div>
+      <div class="footer-center">
+        <p class="footer-disclaimer">
+          “This student project is for disaster awareness and monitoring only. Always follow official instructions from local authorities, disaster-management agencies, and emergency services.”
+        </p>
+      </div>
+      <div class="footer-right">
+        <span class="academic-badge">Academic Project</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Leaflet MarkerCluster JS -->
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Main Frontend Application Logic -->
+  <script src="/static/app.js"></script>
+</body>
+</html>
