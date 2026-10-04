@@ -22,16 +22,16 @@
   <!-- Application Shell -->
   <div class="app-container">
     
-    <!-- Top Header Navigation (Clean, minimal, no symbol, no status indicator, no time, no refresh button) -->
+    <!-- Top Header Navigation (Clean, minimal, no brand symbol, no live status, no clock, no refresh button) -->
     <header class="app-header">
       <div class="header-brand">
         <div class="brand-text">
-          <div class="brand-title">DisasterWatch <span class="brand-highlight">Global</span></div>
-          <div class="brand-subtitle">Real-Time Disaster Monitoring & Affected Area Mapping System</div>
+          <div class="brand-title">Real-Time Disaster Monitoring</div>
+          <div class="brand-subtitle">Affected Area Mapping & Risk Assessment System</div>
         </div>
       </div>
 
-      <!-- Navigation Tabs (Dashboard, Alert Details, Data Sources - About Project moved to PDF) -->
+      <!-- Navigation Tabs (Dashboard, Alert Details, Data Sources) -->
       <nav class="nav-tabs" role="tablist">
         <button class="nav-tab active" data-view="dashboard" role="tab" aria-selected="true">
           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
@@ -43,17 +43,9 @@
         </button>
         <button class="nav-tab" data-view="data-sources" role="tab" aria-selected="false">
           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-          Data Sources & PDF
+          Data Sources
         </button>
       </nav>
-
-      <!-- Right controls area kept clean -->
-      <div class="header-controls">
-        <a href="/api/download-documentation-pdf" target="_blank" class="btn btn-sm btn-outline-sage" title="Download Official Documentation PDF">
-          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span>Download PDF</span>
-        </a>
-      </div>
     </header>
 
     <!-- Subheader Notification Bar -->
@@ -361,8 +353,9 @@
                 <p class="rule-text" id="prev-rule">--</p>
               </div>
               <div class="preview-actions">
-                <button class="btn btn-sm btn-primary" id="prev-view-details-btn">View Full Details & Guidance</button>
-                <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary" id="prev-source-link">Original Source &rarr;</a>
+                <button class="btn btn-sm btn-primary" id="prev-view-details-btn">View Full Details</button>
+                <a href="#" target="_blank" class="btn btn-sm btn-secondary" id="prev-pdf-btn" style="display:none;" title="Download Area Assessment PDF">📄 Area PDF</a>
+                <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary" id="prev-source-link">Source &rarr;</a>
               </div>
             </div>
 
@@ -401,6 +394,15 @@
                 </div>
                 <h1 class="details-headline" id="det-title">Event Title</h1>
                 <div class="details-location-coords" id="det-location">Location string</div>
+                <div class="details-action-bar" style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+                  <a href="#" id="det-download-area-pdf" target="_blank" class="btn btn-primary btn-sm">
+                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download Area Disaster Report (PDF)
+                  </a>
+                  <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" id="det-source-external-btn">
+                    View Original Scientific Feed &rarr;
+                  </a>
+                </div>
               </div>
 
               <!-- Metrics Grid -->
@@ -487,21 +489,6 @@
           <div class="view-header-title">
             <h2>Data Feeds & Telemetry Lineage</h2>
             <p>Transparent operational status of all live integrations. DisasterWatch enforces an absolute no-fake-data rule: unconfigured or offline feeds are honestly reported.</p>
-          </div>
-
-          <!-- Documentation PDF Download Banner -->
-          <div class="pdf-download-card">
-            <div class="pdf-card-content">
-              <div class="pdf-card-icon">📄</div>
-              <div class="pdf-card-text">
-                <h3>Download Project Documentation (PDF)</h3>
-                <p>Complete academic report containing system architecture, classification taxonomy, detailed mathematical formulations for telemetric risk calculation, and safety protocols.</p>
-              </div>
-            </div>
-            <a href="/api/download-documentation-pdf" target="_blank" class="btn btn-primary btn-download-pdf">
-              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Download PDF Report
-            </a>
           </div>
 
           <!-- Sources Status Table -->

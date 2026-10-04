@@ -456,6 +456,31 @@ async def download_documentation_pdf():
     )
 
 
+@app.get("/api/alerts/{alert_id}/pdf", tags=["Alerts"])
+async def download_alert_area_pdf(alert_id: str):
+    """
+    Generates and returns an Area Disaster Assessment & Telemetric Evaluation Report PDF
+    specifically for this area, detailing live telemetrics, exact mathematical basis,
+    threshold benchmarks, and emergency directives.
+    """
+    alert = get_alert_by_id(alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    
+    from generate_pdf import generate_area_disaster_report_pdf
+    pdf_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "reports")
+    os.makedirs(pdf_dir, exist_ok=True)
+    pdf_filename = f"Disaster_Assessment_{alert_id}.pdf"
+    pdf_path = os.path.join(pdf_dir, pdf_filename)
+    generate_area_disaster_report_pdf(alert, pdf_path)
+
+    return FileResponse(
+        pdf_path,
+        media_type="application/pdf",
+        filename=pdf_filename
+    )
+
+
 @app.get("/api/risk-explanation/{alert_id}", tags=["Risk Engine"])
 async def get_risk_explanation(alert_id: str):
     """

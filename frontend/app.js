@@ -655,6 +655,12 @@ function handleAlertSelection(alert) {
         srcLink.style.display = 'none';
       }
     }
+
+    const prevPdfBtn = document.getElementById('prev-pdf-btn');
+    if (prevPdfBtn) {
+      prevPdfBtn.href = `/api/alerts/${alert.id}/pdf`;
+      prevPdfBtn.style.display = 'inline-flex';
+    }
   }
 }
 
@@ -808,6 +814,23 @@ async function loadAlertDetails(alertId) {
         linkEl.style.display = 'inline';
       } else {
         linkEl.style.display = 'none';
+      }
+    }
+
+    // Set Area Disaster Report PDF link
+    const areaPdfBtn = document.getElementById('det-download-area-pdf');
+    if (areaPdfBtn) {
+      areaPdfBtn.href = `/api/alerts/${alert.id}/pdf`;
+    }
+
+    // Set External Source Feed button
+    const extSrcBtn = document.getElementById('det-source-external-btn');
+    if (extSrcBtn) {
+      if (alert.source_url) {
+        extSrcBtn.href = alert.source_url;
+        extSrcBtn.style.display = 'inline-flex';
+      } else {
+        extSrcBtn.style.display = 'none';
       }
     }
 
