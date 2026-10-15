@@ -46,3 +46,9 @@ data/*.db
 # OS artifacts
 .DS_Store
 Thumbs.db
+
+# Automated Backups & Test Artifacts
+backups/
+.pytest_cache/
+data/telemetry_analysis_report.txt
+data/reports/*.pdf

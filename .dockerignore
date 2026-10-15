@@ -1,0 +1,11 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.git
+.github
+.env
+.venv
+venv/
+backups/
+data/reports/*.pdf

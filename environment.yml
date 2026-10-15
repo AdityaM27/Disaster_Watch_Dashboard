@@ -1,0 +1,21 @@
+# ==============================================================================
+# EXP-7: Environment Management (Conda/Venv)
+# Replicable Conda environment definition for DisasterWatch Dashboard
+# Create environment via: conda env create -f environment.yml
+# ==============================================================================
+name: disasterwatch-env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+      - fastapi>=0.110.0
+      - uvicorn>=0.28.0
+      - httpx>=0.27.0
+      - pydantic>=2.6.0
+      - python-dotenv>=1.0.0
+      - reportlab>=4.1.0
+      - pytest>=8.0.0
+      - pyserial>=3.5

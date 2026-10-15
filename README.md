@@ -241,3 +241,21 @@ The codebase is built with modular services under `backend/services/`:
 - **Not an Emergency Dispatch System:** DisasterWatch India does NOT notify 112/police/fire/ambulance or dispatch emergency aid.
 - **Estimated Risk Modeling:** Weather-derived flood alerts represent estimated risk perimeters based on numerical weather predictions, not on-the-ground certified flooding.
 - **Network Dependency:** Real-time data availability depends on uptime of public scientific services (USGS, Open-Meteo).
+
+
+---
+
+## 🧪 12. Lab Curriculum & Practical Experiments Mapping
+
+This project serves as a comprehensive Capstone and practical implementation of the Linux Ecosystem, DevOps, and Full-Stack Engineering syllabus:
+
+| Experiment | Curriculum Topic | Project Implementation & File Reference |
+|---|---|---|
+| **EXP-1** | **The Shell & CLI Mastery** | [`scripts/analyze_telemetry.sh`](file:///home/aditya/disasterwatch-india/scripts/analyze_telemetry.sh) — Uses `find`, `cat`, `grep`, `awk`, Piping (`\|`), and Redirection (`>`, `>>`) to generate automated audit reports. |
+| **EXP-2** | **Shell Scripting for Automation** | [`scripts/backup.sh`](file:///home/aditya/disasterwatch-india/scripts/backup.sh) — Bash automation featuring timestamp variables, `for` loops, and `if-else` conditionals to create `.tar.gz` backups. |
+| **EXP-4** | **Git & GitHub Fundamentals** | Hosted at [AdityaM27/Disaster_Watch_Dashboard](https://github.com/AdityaM27/Disaster_Watch_Dashboard) with production [`.gitignore`](file:///home/aditya/disasterwatch-india/.gitignore) and semantic commits. |
+| **EXP-6** | **Introduction to CI/CD** | [`ci/github_actions_ci.yml`](file:///home/aditya/disasterwatch-india/ci/github_actions_ci.yml) — Automated GitHub Actions CI workflow executing [`backend/tests/test_risk_engine.py`](file:///home/aditya/disasterwatch-india/backend/tests/test_risk_engine.py) via `pytest`. |
+| **EXP-7** | **Environment Management** | Isolated runtime via [`backend/requirements.txt`](file:///home/aditya/disasterwatch-india/backend/requirements.txt) (pip) and [`environment.yml`](file:///home/aditya/disasterwatch-india/environment.yml) (Conda/Mamba). |
+| **EXP-9** | **Containerization with Docker** | Multi-stage [`Dockerfile`](file:///home/aditya/disasterwatch-india/Dockerfile) and [`docker-compose.yml`](file:///home/aditya/disasterwatch-india/docker-compose.yml) allowing isolated deployment. |
+| **EXP-11** | **Serial Communication (UART)** | [`hardware_bridge/serial_sensor_ingest.py`](file:///home/aditya/disasterwatch-india/hardware_bridge/serial_sensor_ingest.py) — Ingests live Arduino CSV telemetry (`Temperature, Humidity, Rain`) via UART into the risk engine. |
+| **EXP-12** | **AI-Assisted Full Stack Development** | AI-engineered full-stack architecture combining a FastAPI asynchronous backend with a responsive Leaflet.js cartographic interface. |
