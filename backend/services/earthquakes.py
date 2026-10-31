@@ -143,8 +143,9 @@ def _parse_usgs_feature(feature: Dict[str, Any], is_regional: bool = False) -> O
             safety_advice += " Tsunami advisory active: Move away from coastal areas to high ground immediately."
 
         # Magnitude-dependent visual circle radius (in km)
-        # Scaled circle for Leaflet visual footprint
-        radius_km = max(15.0, (mag ** 2.2) * 2.5)
+        # Scaled circle for Leaflet visual footprint (clamp magnitude >= 0.1 to avoid complex numbers on micro-quakes)
+        safe_mag = max(0.1, mag)
+        radius_km = max(15.0, (safe_mag ** 2.2) * 2.5)
 
         return {
             "id": f"usgs-{usgs_id}",

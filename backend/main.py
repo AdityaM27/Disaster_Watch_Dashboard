@@ -42,7 +42,8 @@ from models import (
     SourceStatus,
     RefreshLog,
     RiskExplanation,
-    DashboardSummary
+    DashboardSummary,
+    AIPredictionRequest
 )
 from services.risk_engine import (
     STANDARD_DISCLAIMER,
@@ -62,6 +63,10 @@ from services.fires import (
     is_fire_service_configured
 )
 from services.gdacs import fetch_gdacs_global_events
+from services.ai_predictor import (
+    predict_disaster_future,
+    get_preset_disaster_scenarios
+)
 
 # Configure structured logging
 logging.basicConfig(
@@ -587,6 +592,87 @@ async def get_refresh_history(limit: int = 20):
     """
     logs = get_refresh_logs(limit=limit)
     return {"count": len(logs), "logs": logs}
+
+
+# ==============================================================================
+# AI FUTURE PREDICTION ENDPOINTS
+# ==============================================================================
+
+@app.get("/api/ai/scenarios", tags=["AI Future Predictor"])
+async def list_ai_scenarios():
+    """
+    Returns curated regional disaster scenarios across India for rapid demonstration.
+    """
+    scenarios = get_preset_disaster_scenarios()
+    return {"count": len(scenarios), "scenarios": scenarios}
+
+
+@app.post("/api/ai/predict", tags=["AI Future Predictor"])
+async def run_ai_prediction(req: AIPredictionRequest):
+    """
+    Executes the AI Future Disaster Trajectory Prediction Model.
+    Forecasts multi-step hazard progression (24h, 48h, 72h), peak risk timing,
+    confidence intervals, and actionable mitigation advisories.
+    """
+    # If an alert_id is provided, auto-fill from cached alert data if available
+    val = req.current_value
+    d_type = req.disaster_type
+    loc_name = req.location_name
+    lat = req.latitude
+    lon = req.longitude
+
+    if req.alert_id:
+        alert = get_alert_by_id(req.alert_id)
+        if alert:
+            d_type = alert["disaster_type"]
+            loc_name = alert["location_name"]
+            lat = alert["latitude"]
+            lon = alert["longitude"]
+            if val is None:
+                if d_type == "Earthquake":
+                    val = alert.get("magnitude")
+                elif d_type in ("Flood Risk", "Flood"):
+                    val = alert.get("rainfall_mm")
+                elif d_type in ("Cyclone/Storm", "Cyclone"):
+                    val = alert.get("wind_speed_kmh")
+                elif d_type == "Heatwave":
+                    val = alert.get("temperature_c")
+
+    prediction = predict_disaster_future(
+        disaster_type=d_type,
+        location_name=loc_name,
+        latitude=lat,
+        longitude=lon,
+        current_value=val,
+        horizon_hours=req.horizon_hours
+    )
+    return prediction
+
+
+@app.get("/api/ai/predictions/active", tags=["AI Future Predictor"])
+async def get_active_ai_predictions():
+    """
+    Returns AI future trajectory projections for high and critical active events.
+    """
+    alerts = get_alerts(severity="Critical", limit=3)
+    if not alerts:
+        alerts = get_alerts(severity="High", limit=3)
+    
+    predictions = []
+    for a in alerts:
+        val = a.get("magnitude") or a.get("rainfall_mm") or a.get("wind_speed_kmh") or a.get("temperature_c")
+        pred = predict_disaster_future(
+            disaster_type=a["disaster_type"],
+            location_name=a["location_name"],
+            latitude=a["latitude"],
+            longitude=a["longitude"],
+            current_value=val,
+            horizon_hours=72
+        )
+        predictions.append(pred)
+        
+    return {"count": len(predictions), "predictions": predictions}
+
 
 
 # Mount Frontend Static Files

@@ -16,3 +16,19 @@ services:
     restart: unless-stopped
     environment:
       - PORT=8000
+      - DATABASE_PATH=/app/data/disasterwatch.db
+
+  disasterwatch-analytics:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: disasterwatch_analytics
+    working_dir: /app
+    command: ["streamlit", "run", "streamlit_dashboard.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true"]
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    depends_on:
+      - disasterwatch-dashboard

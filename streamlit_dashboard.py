@@ -113,7 +113,7 @@ else:
 
 # ----------------- Analytics Charts -----------------
 st.subheader("📊 Telemetry Visualizations")
-tab1, tab2 = st.tabs(["Severity Breakdown", "Rainfall & Temperature Metrics"])
+tab1, tab2, tab3 = st.tabs(["Severity Breakdown", "Rainfall & Temperature Metrics", "🤖 AI Disaster Future Predictor"])
 
 with tab1:
     sev_counts = filtered_df["severity"].value_counts()
@@ -135,6 +135,52 @@ with tab2:
             st.line_chart(temp_df.set_index("location_name")["temperature_c"])
         else:
             st.caption("No temperature metrics available for selection.")
+
+with tab3:
+    st.markdown("#### 🤖 AI Forward Trajectory Simulation (Multi-Step Horizon)")
+    st.caption("Simulates future risk escalation, peak inundation/wind windows, and mitigation actions using autoregressive physical models.")
+    
+    import sys
+    sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend"))
+    from services.ai_predictor import predict_disaster_future
+
+    ai_cols = st.columns([1, 1, 1])
+    with ai_cols[0]:
+        sim_hazard = st.selectbox("Simulate Hazard Type", ["Flood Risk", "Cyclone/Storm", "Earthquake", "Heatwave"])
+    with ai_cols[1]:
+        if sim_hazard == "Flood Risk":
+            sim_val = st.slider("Current Precipitation Rate (mm/h)", 5.0, 80.0, 28.5)
+            sim_loc = st.text_input("Target Basin", "Brahmaputra River Basin, Guwahati")
+        elif sim_hazard == "Cyclone/Storm":
+            sim_val = st.slider("Current Sustained Wind Speed (km/h)", 40.0, 180.0, 92.0)
+            sim_loc = st.text_input("Coastal Sector", "Puri-Paradip Coastal Corridor, Odisha")
+        elif sim_hazard == "Earthquake":
+            sim_val = st.slider("Mainshock Magnitude (Richter)", 4.0, 8.5, 6.2)
+            sim_loc = st.text_input("Fault Zone", "Delhi-NCR Fault System")
+        else:
+            sim_val = st.slider("Ambient Temperature (°C)", 38.0, 52.0, 44.5)
+            sim_loc = st.text_input("Region", "Vidarbha Plains, Nagpur")
+    with ai_cols[2]:
+        sim_horizon = st.radio("Simulation Horizon", [24, 48, 72], index=2, horizontal=True)
+        st.write("")
+        run_sim = st.button("🚀 Run AI Simulation", use_container_width=True)
+
+    # Always compute or update simulation
+    ai_res = predict_disaster_future(sim_hazard, sim_loc, 22.5, 82.0, current_value=sim_val, horizon_hours=sim_horizon)
+    
+    st.success(f"**AI Model:** {ai_res['model_name']} | **Confidence:** {ai_res['model_confidence_pct']}% | **Peak Window:** T+{ai_res['peak_risk_hour']}h ({ai_res['peak_risk_time']})")
+    
+    # Timeline dataframe
+    t_df = pd.DataFrame(ai_res["timeline"])
+    chart_data = t_df.set_index("step_hour")[["predicted_risk_score", "predicted_value"]]
+    chart_data.columns = ["Projected Risk Score (0-10)", f"Physical Metric ({t_df['value_unit'].iloc[0]})"]
+    
+    st.line_chart(chart_data)
+    
+    # Summary & Directives
+    st.info(f"**AI Situational Assessment:** {ai_res['summary_text']}")
+    st.markdown(f"**AI Emergency Mitigation Protocol:**\n\n{ai_res['ai_mitigation_advisory']}")
+
 
 # ----------------- Raw Data Table & CSV Download -----------------
 st.subheader("📋 Filtered Dataset View")

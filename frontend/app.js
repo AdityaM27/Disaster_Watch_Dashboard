@@ -20,7 +20,8 @@ const state = {
   map: null,
   markersClusterGroup: null,
   zonesFeatureGroup: null,
-  chartInstance: null
+  chartInstance: null,
+  aiChartInstance: null
 };
 
 // ==========================================================================
@@ -32,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initMap();
   initFilterListeners();
   initChartControls();
+  initAIPredictor();
   
   // Initial live data load
   fetchDashboardData();
@@ -103,6 +105,16 @@ function switchView(viewName) {
   // If entering sources view, refresh sources table and logs
   if (viewName === 'data-sources') {
     fetchSourcesData();
+  }
+
+  // If entering AI predictor view, trigger initial prediction
+  if (viewName === 'ai-predictor') {
+    if (!state.aiInitialized) {
+      state.aiInitialized = true;
+      runAIPrediction();
+    } else if (state.aiChartInstance) {
+      state.aiChartInstance.resize();
+    }
   }
 }
 
@@ -1107,3 +1119,355 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+// ==========================================================================
+// VIEW 4: AI DISASTER FUTURE PREDICTOR LOGIC
+// ==========================================================================
+
+const aiScenariosMap = {
+  'scenario-brahmaputra': {
+    type: 'Flood Risk',
+    name: 'Brahmaputra Basin, Guwahati, Assam',
+    lat: 26.1445,
+    lon: 91.7362,
+    val: 28.5
+  },
+  'scenario-cyclone-dana': {
+    type: 'Cyclone/Storm',
+    name: 'Puri-Paradip Coastal Corridor, Odisha',
+    lat: 19.8135,
+    lon: 85.8312,
+    val: 92.0
+  },
+  'scenario-delhi-seismic': {
+    type: 'Earthquake',
+    name: 'Mahendragarh-Dehradun Fault, Delhi-NCR',
+    lat: 28.6139,
+    lon: 77.2090,
+    val: 5.8
+  },
+  'scenario-vidarbha-heat': {
+    type: 'Heatwave',
+    name: 'Nagpur & Chandrapur District, Maharashtra',
+    lat: 21.1458,
+    lon: 79.0882,
+    val: 44.8
+  }
+};
+
+function initAIPredictor() {
+  const scenarioBtns = document.querySelectorAll('.scenario-btn');
+  scenarioBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      scenarioBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const scenKey = btn.getAttribute('data-scenario');
+      const scen = aiScenariosMap[scenKey];
+      if (scen) {
+        const typeSelect = document.getElementById('ai-disaster-type');
+        const locInput = document.getElementById('ai-location-name');
+        const valInput = document.getElementById('ai-current-val');
+        if (typeSelect) typeSelect.value = scen.type;
+        if (locInput) locInput.value = scen.name;
+        if (valInput) valInput.value = scen.val;
+      }
+      runAIPrediction();
+    });
+  });
+
+  const runBtn = document.getElementById('btn-run-ai-prediction');
+  if (runBtn) {
+    runBtn.addEventListener('click', () => runAIPrediction());
+  }
+
+  const typeSelect = document.getElementById('ai-disaster-type');
+  if (typeSelect) {
+    typeSelect.addEventListener('change', () => {
+      const valInput = document.getElementById('ai-current-val');
+      const locInput = document.getElementById('ai-location-name');
+      const t = typeSelect.value;
+      if (t === 'Flood Risk') {
+        if (valInput) valInput.value = '25.0';
+        if (locInput) locInput.value = 'Godavari River Basin, Rajahmundry';
+      } else if (t === 'Cyclone/Storm') {
+        if (valInput) valInput.value = '85.0';
+        if (locInput) locInput.value = 'Visakhapatnam Coastal Sector';
+      } else if (t === 'Earthquake') {
+        if (valInput) valInput.value = '6.2';
+        if (locInput) locInput.value = 'Himalayan Thrust Belt, Uttarakhand';
+      } else if (t === 'Heatwave') {
+        if (valInput) valInput.value = '43.5';
+        if (locInput) locInput.value = 'Northern Plains, Jodhpur';
+      }
+    });
+  }
+}
+
+async function runAIPrediction() {
+  const runBtn = document.getElementById('btn-run-ai-prediction');
+  if (runBtn) {
+    runBtn.innerHTML = `
+      <svg class="spin-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+      Computing AI Model...
+    `;
+    runBtn.disabled = true;
+  }
+
+  const dType = document.getElementById('ai-disaster-type')?.value || 'Flood Risk';
+  const locName = document.getElementById('ai-location-name')?.value || 'Brahmaputra Basin, Guwahati, Assam';
+  const currVal = parseFloat(document.getElementById('ai-current-val')?.value || '25.0');
+  const horizon = parseInt(document.getElementById('ai-forecast-horizon')?.value || '72');
+
+  let lat = 26.1445;
+  let lon = 91.7362;
+  const activeScen = document.querySelector('.scenario-btn.active');
+  if (activeScen) {
+    const scen = aiScenariosMap[activeScen.getAttribute('data-scenario')];
+    if (scen && scen.name === locName) {
+      lat = scen.lat;
+      lon = scen.lon;
+    }
+  }
+
+  try {
+    const resp = await fetch('/api/ai/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        disaster_type: dType,
+        location_name: locName,
+        latitude: lat,
+        longitude: lon,
+        current_value: isNaN(currVal) ? null : currVal,
+        horizon_hours: horizon
+      })
+    });
+
+    if (!resp.ok) {
+      throw new Error(`Server returned status ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    renderAIPrediction(data);
+  } catch (err) {
+    console.error('Error generating AI prediction:', err);
+  } finally {
+    if (runBtn) {
+      runBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Run AI Prediction
+      `;
+      runBtn.disabled = false;
+    }
+  }
+}
+
+function renderAIPrediction(data) {
+  if (!data || !data.timeline) return;
+
+  // 1. Top Metrics
+  const peakHourEl = document.getElementById('ai-peak-hour');
+  const peakTimeEl = document.getElementById('ai-peak-time');
+  const trendEl = document.getElementById('ai-trend-val');
+  const sevBadgeEl = document.getElementById('ai-severity-badge');
+  const confEl = document.getElementById('ai-confidence-val');
+  const archEl = document.getElementById('ai-model-arch');
+  const unitTagEl = document.getElementById('ai-chart-unit-tag');
+
+  if (peakHourEl) peakHourEl.textContent = `T+${data.peak_risk_hour}h`;
+  if (peakTimeEl) peakTimeEl.textContent = data.peak_risk_time || 'Next 24h Window';
+  if (trendEl) trendEl.textContent = data.overall_trend || 'Active Evolution';
+  
+  const peakStep = data.timeline.reduce((prev, curr) => (curr.predicted_risk_score > prev.predicted_risk_score ? curr : prev), data.timeline[0]);
+  if (sevBadgeEl) sevBadgeEl.textContent = `Peak: ${peakStep.predicted_severity} (${peakStep.predicted_risk_score}/10)`;
+  if (confEl) confEl.textContent = `${data.model_confidence_pct}%`;
+  if (archEl) archEl.textContent = data.model_name || 'Autoregressive Ensemble AI';
+  if (unitTagEl) unitTagEl.textContent = `Unit: ${data.timeline[0]?.value_unit || 'Metric'}`;
+
+  // 2. Render Trajectory Chart
+  renderAITrajectoryChart(data);
+
+  // 3. Render Explainable Feature Importance
+  const featContainer = document.getElementById('ai-features-container');
+  if (featContainer && data.feature_importance) {
+    let featHtml = '';
+    for (const [featName, weight] of Object.entries(data.feature_importance)) {
+      const pct = Math.round(weight * 100);
+      featHtml += `
+        <div class="feat-item">
+          <div class="feat-meta">
+            <span>${escapeHtml(featName)}</span>
+            <span>${pct}% contribution</span>
+          </div>
+          <div class="feat-track">
+            <div class="feat-fill" style="width: ${pct}%"></div>
+          </div>
+        </div>
+      `;
+    }
+    featContainer.innerHTML = featHtml;
+  }
+
+  // 4. Render AI Situation Summary & Mitigation
+  const summaryEl = document.getElementById('ai-summary-text');
+  if (summaryEl) {
+    summaryEl.textContent = data.summary_text;
+  }
+
+  const advContainer = document.getElementById('ai-advisory-items');
+  if (advContainer && data.ai_mitigation_advisory) {
+    const lines = data.ai_mitigation_advisory.split(/\d+\.\s+/).filter(Boolean);
+    let advHtml = '';
+    lines.forEach((item, idx) => {
+      advHtml += `
+        <div class="advisory-item">
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="#2d6a4f" fill="none" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span><strong>Action ${idx + 1}:</strong> ${escapeHtml(item.trim())}</span>
+        </div>
+      `;
+    });
+    advContainer.innerHTML = advHtml;
+  }
+
+  // 5. Render Step-by-Step Ledger Table
+  const tbody = document.getElementById('ai-timeline-table-body');
+  if (tbody) {
+    let rowsHtml = '';
+    data.timeline.forEach(step => {
+      const sevClass = step.predicted_severity.toLowerCase();
+      rowsHtml += `
+        <tr>
+          <td><strong>T+${step.step_hour}h</strong></td>
+          <td>${step.timestamp}</td>
+          <td><span class="mono-value">${step.predicted_value} ${step.value_unit}</span></td>
+          <td><strong>${step.predicted_risk_score} / 10</strong></td>
+          <td><span class="status-badge ${sevClass}">${step.predicted_severity}</span></td>
+          <td><span class="text-subtle">[${step.confidence_interval_low} — ${step.confidence_interval_high}]</span></td>
+        </tr>
+      `;
+    });
+    tbody.innerHTML = rowsHtml;
+  }
+}
+
+function renderAITrajectoryChart(data) {
+  const canvas = document.getElementById('ai-trajectory-chart');
+  if (!canvas) return;
+
+  const labels = data.timeline.map(s => `T+${s.step_hour}h`);
+  const riskScores = data.timeline.map(s => s.predicted_risk_score);
+  const physicalVals = data.timeline.map(s => s.predicted_value);
+  const confHigh = data.timeline.map(s => s.confidence_interval_high);
+  const confLow = data.timeline.map(s => s.confidence_interval_low);
+
+  if (state.aiChartInstance) {
+    state.aiChartInstance.destroy();
+  }
+
+  state.aiChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'AI Projected Risk Score (0-10)',
+          data: riskScores,
+          borderColor: '#d90429',
+          backgroundColor: 'rgba(217, 4, 41, 0.12)',
+          borderWidth: 2.5,
+          tension: 0.35,
+          yAxisID: 'yRisk',
+          fill: true,
+          pointBackgroundColor: '#d90429',
+          pointRadius: 4
+        },
+        {
+          label: `Physical Parameter (${data.timeline[0]?.value_unit || 'Val'})`,
+          data: physicalVals,
+          borderColor: '#2b7fff',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderDash: [5, 4],
+          tension: 0.3,
+          yAxisID: 'yPhys',
+          pointBackgroundColor: '#2b7fff',
+          pointRadius: 3
+        },
+        {
+          label: '95% Confidence Upper Bound',
+          data: confHigh,
+          borderColor: 'rgba(217, 4, 41, 0.3)',
+          backgroundColor: 'transparent',
+          borderWidth: 1,
+          borderDash: [2, 2],
+          pointRadius: 0,
+          yAxisID: 'yRisk'
+        },
+        {
+          label: '95% Confidence Lower Bound',
+          data: confLow,
+          borderColor: 'rgba(217, 4, 41, 0.3)',
+          backgroundColor: 'transparent',
+          borderWidth: 1,
+          borderDash: [2, 2],
+          pointRadius: 0,
+          yAxisID: 'yRisk'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: { color: '#133822', boxWidth: 12, font: { size: 11, weight: '600' } }
+        },
+        tooltip: {
+          backgroundColor: '#133822',
+          titleFont: { size: 12, weight: '700' },
+          bodyFont: { size: 11 }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(27, 67, 50, 0.08)' },
+          ticks: { color: '#133822', font: { size: 11, weight: '600' } }
+        },
+        yRisk: {
+          type: 'linear',
+          position: 'left',
+          min: 0,
+          max: 10,
+          title: {
+            display: true,
+            text: 'Risk Index (0 - 10)',
+            color: '#d90429',
+            font: { weight: 'bold', size: 11 }
+          },
+          grid: { color: 'rgba(27, 67, 50, 0.08)' },
+          ticks: { color: '#d90429', font: { size: 10 } }
+        },
+        yPhys: {
+          type: 'linear',
+          position: 'right',
+          title: {
+            display: true,
+            text: `Physical Value (${data.timeline[0]?.value_unit || ''})`,
+            color: '#2b7fff',
+            font: { weight: 'bold', size: 11 }
+          },
+          grid: { drawOnChartArea: false },
+          ticks: { color: '#2b7fff', font: { size: 10 } }
+        }
+      }
+    }
+  });
+}
+

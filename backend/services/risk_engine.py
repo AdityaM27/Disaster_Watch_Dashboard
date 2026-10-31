@@ -57,7 +57,7 @@ def evaluate_earthquake_risk(magnitude: float, depth_km: float) -> Tuple[str, fl
     if mag < 4.0:
         severity = "Low"
         rule = f"Minor seismic event (Magnitude {mag} < 4.0). Generally felt only by sensitive instruments or few individuals."
-        score = 2.0 + (mag / 4.0) * 1.5
+        score = max(1.0, 2.0 + (mag / 4.0) * 1.5)
     elif mag < 6.0:
         severity = "Medium"
         rule = f"Moderate earthquake (Magnitude {mag} between 4.0 and 5.9). Capable of slight damage to poor structures near epicenter."

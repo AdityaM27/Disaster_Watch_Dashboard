@@ -45,6 +45,10 @@
           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
           Data Sources
         </button>
+        <button class="nav-tab" data-view="ai-predictor" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="4"/></svg>
+          AI Disaster Predictor
+        </button>
       </nav>
     </header>
 
@@ -551,6 +555,223 @@
                 </tbody>
               </table>
             </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ================= VIEW 4: AI DISASTER FUTURE PREDICTOR ================= -->
+      <section class="view-panel" id="view-ai-predictor">
+        <div class="ai-view-container">
+          
+          <div class="view-header-title">
+            <div class="ai-header-badge">
+              <span class="ai-pulse-dot"></span>
+              <span>Autonomous Predictive Intelligence (EXP-12)</span>
+            </div>
+            <h2>AI Disaster Trajectory & Future Risk Predictor</h2>
+            <p>
+              Simulates forward multi-horizon disaster evolution (up to 72 hours) using autoregressive hydrological unit hydrographs,
+              Kaplan-DeMaria cyclone intensification models, and Modified Omori-Utsu statistical seismology equations.
+            </p>
+          </div>
+
+          <!-- Scenario Selection & Configuration Grid -->
+          <div class="ai-config-grid">
+            
+            <!-- Quick Pre-Set Scenarios Card -->
+            <div class="ai-card">
+              <div class="ai-card-header">
+                <h3>1. Select Regional Disaster Scenario</h3>
+                <span class="badge-pill">Curated Regional Benchmarks</span>
+              </div>
+              <p class="ai-card-sub">Choose an active disaster context across India to evaluate model forecasting:</p>
+              <div class="ai-scenarios-list" id="ai-scenarios-container">
+                <!-- Dynamically loaded from /api/ai/scenarios -->
+                <div class="scenario-btn active" data-scenario="scenario-brahmaputra">
+                  <div class="scen-top">
+                    <span class="scen-badge flood">Flood Risk</span>
+                    <span class="scen-name">Brahmaputra Basin, Assam</span>
+                  </div>
+                  <div class="scen-desc">Monsoon surge over upper catchment (Guwahati)</div>
+                </div>
+                <div class="scenario-btn" data-scenario="scenario-cyclone-dana">
+                  <div class="scen-top">
+                    <span class="scen-badge cyclone">Cyclone/Storm</span>
+                    <span class="scen-name">Odisha Coastal Corridor</span>
+                  </div>
+                  <div class="scen-desc">Intensifying tropical cyclonic system (Puri-Paradip)</div>
+                </div>
+                <div class="scenario-btn" data-scenario="scenario-delhi-seismic">
+                  <div class="scen-top">
+                    <span class="scen-badge earthquake">Earthquake</span>
+                    <span class="scen-name">Delhi-NCR Fault Zone</span>
+                  </div>
+                  <div class="scen-desc">M5.8 mainshock post-rupture aftershock hazard</div>
+                </div>
+                <div class="scenario-btn" data-scenario="scenario-vidarbha-heat">
+                  <div class="scen-top">
+                    <span class="scen-badge heatwave">Heatwave</span>
+                    <span class="scen-name">Vidarbha Plains (Nagpur)</span>
+                  </div>
+                  <div class="scen-desc">Anticyclonic heat dome stagnation (44.8°C)</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Parameters & Run Trigger Card -->
+            <div class="ai-card">
+              <div class="ai-card-header">
+                <h3>2. Simulation Parameters & Horizon</h3>
+                <span class="badge-pill">Fine-Tune Input</span>
+              </div>
+              
+              <div class="ai-form-group">
+                <label for="ai-disaster-type">Hazard Classification</label>
+                <select id="ai-disaster-type" class="ai-select">
+                  <option value="Flood Risk">Flood Risk (Precipitation & Basin Runoff)</option>
+                  <option value="Cyclone/Storm">Cyclone/Storm (Wind & Coastal Inundation)</option>
+                  <option value="Earthquake">Earthquake (Aftershock Decay & Peak Hazard)</option>
+                  <option value="Heatwave">Heatwave (Thermal Persistence & Diurnal Peak)</option>
+                </select>
+              </div>
+
+              <div class="ai-form-row">
+                <div class="ai-form-group">
+                  <label for="ai-location-name">Target Location Name</label>
+                  <input type="text" id="ai-location-name" class="ai-input" value="Brahmaputra Basin, Guwahati, Assam" />
+                </div>
+                <div class="ai-form-group">
+                  <label for="ai-current-val">Primary Telemetry Value</label>
+                  <input type="number" step="0.1" id="ai-current-val" class="ai-input" value="28.5" placeholder="Rain mm, Wind km/h, Mag" />
+                </div>
+              </div>
+
+              <div class="ai-form-row">
+                <div class="ai-form-group">
+                  <label for="ai-forecast-horizon">Prediction Forecast Horizon</label>
+                  <select id="ai-forecast-horizon" class="ai-select">
+                    <option value="24">Next 24 Hours (Immediate Tactical)</option>
+                    <option value="48">Next 48 Hours (Operational Response)</option>
+                    <option value="72" selected>Next 72 Hours (Strategic Preparedness)</option>
+                  </select>
+                </div>
+                <div class="ai-form-group btn-align-bottom">
+                  <button id="btn-run-ai-prediction" class="btn-primary-action ai-run-btn">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    Run AI Prediction
+                  </button>
+                </div>
+              </div>
+
+              <div class="ai-note-box">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <span>AI model weights are calibrated against historical Indian disaster datasets and real-time physical equations.</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- AI Model Output Section (Active Results) -->
+          <div class="ai-results-wrapper" id="ai-results-panel">
+            
+            <!-- Top AI Metrics -->
+            <div class="ai-metrics-row">
+              <div class="ai-metric-card">
+                <div class="metric-top-label">Projected Peak Risk Window</div>
+                <div class="metric-big-val" id="ai-peak-hour">T+18h</div>
+                <div class="metric-sub-label" id="ai-peak-time">2026-10-31 06:00 UTC</div>
+              </div>
+              <div class="ai-metric-card">
+                <div class="metric-top-label">Projected Severity Trajectory</div>
+                <div class="metric-big-val" id="ai-trend-val">Escalating</div>
+                <div class="metric-sub-label" id="ai-severity-badge">Peak: Critical (8.8/10)</div>
+              </div>
+              <div class="ai-metric-card">
+                <div class="metric-top-label">AI Model Confidence</div>
+                <div class="metric-big-val" id="ai-confidence-val">89.2%</div>
+                <div class="metric-sub-label">Residual Variance: Low</div>
+              </div>
+              <div class="ai-metric-card">
+                <div class="metric-top-label">Active Model Architecture</div>
+                <div class="metric-med-val" id="ai-model-arch">Hydro-Autoregressive Unit Hydrograph</div>
+                <div class="metric-sub-label">Multi-Step Time-Series</div>
+              </div>
+            </div>
+
+            <!-- Forecast Trajectory Chart -->
+            <div class="ai-chart-card">
+              <div class="chart-header-row">
+                <div class="chart-title-block">
+                  <h3>72-Hour Forward Disaster Progression Curve</h3>
+                  <p>Shows projected physical metric, risk escalation index (0-10), and upper/lower confidence bounds over time.</p>
+                </div>
+                <div class="chart-badge-tag" id="ai-chart-unit-tag">Unit: mm/h</div>
+              </div>
+              <div class="ai-chart-container">
+                <canvas id="ai-trajectory-chart" height="90"></canvas>
+              </div>
+            </div>
+
+            <!-- Explainable AI (XAI) Feature Importance & Mitigation Directives -->
+            <div class="ai-insights-grid">
+              
+              <!-- Feature Importance -->
+              <div class="ai-insight-card">
+                <div class="insight-header">
+                  <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                  <h4>Explainable AI (XAI) — Dynamic Feature Contributions</h4>
+                </div>
+                <p class="insight-sub">Mathematical sensitivity breakdown of parameters driving the forward forecast:</p>
+                <div class="feature-bars-list" id="ai-features-container">
+                  <!-- Dynamically populated -->
+                </div>
+              </div>
+
+              <!-- Actionable AI Mitigation Directives -->
+              <div class="ai-insight-card">
+                <div class="insight-header">
+                  <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  <h4>AI Situational Assessment & Preparedness Protocol</h4>
+                </div>
+                <div class="ai-summary-callout" id="ai-summary-text">
+                  <!-- Populated by AI -->
+                </div>
+                <div class="ai-advisory-checklist">
+                  <h5>Operational Directives:</h5>
+                  <div id="ai-advisory-items">
+                    <!-- Populated by AI -->
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Detailed Hourly Simulation Table -->
+            <div class="ai-table-card">
+              <div class="table-card-header">
+                <h3>Multi-Step Forecast Trajectory Ledger (Hourly Matrix)</h3>
+                <span class="badge-pill">Step-by-Step Numerical Output</span>
+              </div>
+              <div class="table-container">
+                <table class="sources-status-table" id="ai-timeline-table">
+                  <thead>
+                    <tr>
+                      <th>Forecast Step</th>
+                      <th>Projected Timestamp</th>
+                      <th>Expected Physical Value</th>
+                      <th>Projected Risk Index (0-10)</th>
+                      <th>Severity Escalation</th>
+                      <th>95% Confidence Interval</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ai-timeline-table-body">
+                    <!-- Populated by AI -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
           </div>
 
         </div>

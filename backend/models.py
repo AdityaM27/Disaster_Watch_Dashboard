@@ -137,3 +137,17 @@ class DashboardSummary(BaseModel):
     sources_online: int = 0
     total_sources: int = 0
     last_refreshed: Optional[str] = None
+
+
+class AIPredictionRequest(BaseModel):
+    """
+    Input schema to trigger an AI Future Disaster Trajectory Prediction.
+    """
+    alert_id: Optional[str] = Field(None, description="Optional existing alert ID to forecast from")
+    disaster_type: str = Field("Flood Risk", description="Hazard type (Flood Risk, Cyclone/Storm, Earthquake, Heatwave)")
+    location_name: str = Field("Brahmaputra Basin, Guwahati", description="Geographic location name")
+    latitude: float = Field(26.1445, description="Latitude")
+    longitude: float = Field(91.7362, description="Longitude")
+    current_value: Optional[float] = Field(None, description="Current primary telemetry reading (rainfall, wind, magnitude, temp)")
+    horizon_hours: int = Field(72, description="Forecast horizon in hours (24, 48, 72)")
+
