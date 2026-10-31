@@ -151,3 +151,14 @@ class AIPredictionRequest(BaseModel):
     current_value: Optional[float] = Field(None, description="Current primary telemetry reading (rainfall, wind, magnitude, temp)")
     horizon_hours: int = Field(72, description="Forecast horizon in hours (24, 48, 72)")
 
+
+class AreaAnalysisRequest(BaseModel):
+    """
+    Input schema to evaluate AI disaster detection and composite threat level for a specific area.
+    """
+    location: Optional[str] = Field("Mumbai", description="Target city, district, basin, or region name")
+    latitude: Optional[float] = Field(None, description="Optional latitude coordinate")
+    longitude: Optional[float] = Field(None, description="Optional longitude coordinate")
+    radius_km: Optional[float] = Field(250.0, description="Search radius in kilometers for proximate disaster events")
+
+

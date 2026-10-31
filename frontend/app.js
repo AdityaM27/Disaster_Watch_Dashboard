@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initFilterListeners();
   initChartControls();
   initAIPredictor();
+  initSidebarAIHub();
   
   // Initial live data load
   fetchDashboardData();
@@ -52,6 +53,30 @@ function initNavigation() {
       switchView(targetView);
     });
   });
+
+  // Quick sub-header AI jump button
+  const quickAiNavBtn = document.getElementById('btn-quick-nav-ai');
+  if (quickAiNavBtn) {
+    quickAiNavBtn.addEventListener('click', () => switchView('ai-predictor'));
+  }
+
+  // Main dashboard AI quick banner buttons
+  document.querySelectorAll('.btn-banner-ai-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const city = btn.getAttribute('data-location') || 'Mumbai';
+      switchView('ai-predictor');
+      const areaInput = document.getElementById('area-query-input');
+      if (areaInput) areaInput.value = city;
+      runAreaThreatAnalysis(city);
+    });
+  });
+
+  const bannerLaunchBtn = document.getElementById('btn-banner-launch-ai');
+  if (bannerLaunchBtn) {
+    bannerLaunchBtn.addEventListener('click', () => {
+      switchView('ai-predictor');
+    });
+  }
 
   // Back to dashboard button in alert details
   const backBtn = document.getElementById('btn-back-to-dashboard');
@@ -74,10 +99,36 @@ function initNavigation() {
   if (resetFiltersBtn) {
     resetFiltersBtn.addEventListener('click', resetAllFilters);
   }
+
+  // URL Hash Routing support (#ai, #ai-predictor, #dashboard, etc.)
+  window.addEventListener('hashchange', handleHashRouting);
+  if (window.location.hash) {
+    handleHashRouting();
+  }
+}
+
+function handleHashRouting() {
+  const hash = window.location.hash.replace('#', '').trim();
+  if (hash === 'ai' || hash === 'ai-predictor') {
+    switchView('ai-predictor');
+  } else if (hash === 'alert-details') {
+    switchView('alert-details');
+  } else if (hash === 'data-sources') {
+    switchView('data-sources');
+  } else if (hash === 'dashboard') {
+    switchView('dashboard');
+  }
 }
 
 function switchView(viewName) {
   state.currentView = viewName;
+
+  // Sync hash without extra history entries
+  if (window.location.hash !== '#' + viewName) {
+    try {
+      history.replaceState(null, '', '#' + viewName);
+    } catch (e) {}
+  }
 
   // Update nav tabs
   document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -111,7 +162,7 @@ function switchView(viewName) {
   if (viewName === 'ai-predictor') {
     if (!state.aiInitialized) {
       state.aiInitialized = true;
-      runAIPrediction();
+      runAreaThreatAnalysis('Mumbai');
     } else if (state.aiChartInstance) {
       state.aiChartInstance.resize();
     }
@@ -420,6 +471,16 @@ function initFilterListeners() {
     prevDetailsBtn.addEventListener('click', () => {
       if (state.selectedAlertId) {
         openAlertDetailsView(state.selectedAlertId);
+      }
+    });
+  }
+
+  // Quick preview run AI prediction button
+  const prevAiBtn = document.getElementById('prev-ai-pred-btn');
+  if (prevAiBtn) {
+    prevAiBtn.addEventListener('click', () => {
+      if (state.selectedAlertId) {
+        launchAIPredictionForAlert(state.selectedAlertId);
       }
     });
   }
@@ -846,6 +907,14 @@ async function loadAlertDetails(alertId) {
       }
     }
 
+    // Set AI Future Trajectory launch button
+    const detAiBtn = document.getElementById('det-launch-ai-pred-btn');
+    if (detAiBtn) {
+      detAiBtn.onclick = () => {
+        launchAIPredictionForAlert(alert.id, alert);
+      };
+    }
+
   } catch (err) {
     console.error('Failed to load alert details:', err);
     if (emptyState) emptyState.style.display = 'block';
@@ -1155,7 +1224,460 @@ const aiScenariosMap = {
   }
 };
 
+// ==========================================================================
+// MAIN SERVER RIGHT SIDEBAR AI HUB
+// ==========================================================================
+
+function initSidebarAIHub() {
+  const calcBtn = document.getElementById('btn-hub-calc');
+  const input = document.getElementById('hub-area-input');
+  const chips = document.querySelectorAll('.hub-chip');
+  const fullLink = document.getElementById('btn-hub-open-full-predictor');
+
+  if (calcBtn && input) {
+    calcBtn.addEventListener('click', () => {
+      runHubThreatAnalysis(input.value.trim() || 'Mumbai');
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        runHubThreatAnalysis(input.value.trim() || 'Mumbai');
+      }
+    });
+  }
+
+  if (chips && input) {
+    chips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        chips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        const city = chip.getAttribute('data-city') || 'Mumbai';
+        input.value = city;
+        runHubThreatAnalysis(city);
+      });
+    });
+  }
+
+  if (fullLink && input) {
+    fullLink.addEventListener('click', () => {
+      const city = input.value.trim() || 'Mumbai';
+      switchView('ai-predictor');
+      const areaInput = document.getElementById('area-query-input');
+      if (areaInput) areaInput.value = city;
+      runAreaThreatAnalysis(city);
+    });
+  }
+
+  // Pre-load threat data for Mumbai on dashboard start
+  runHubThreatAnalysis('Mumbai');
+}
+
+async function runHubThreatAnalysis(locationQuery) {
+  const outBox = document.getElementById('hub-threat-output');
+  if (!outBox) return;
+
+  outBox.innerHTML = `
+    <div style="font-size: 0.76rem; color: var(--text-subtle); display: flex; align-items: center; gap: 6px;">
+      <svg class="spin-icon" viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+      Evaluating threat for ${escapeHtml(locationQuery)}...
+    </div>
+  `;
+
+  try {
+    const resp = await fetch('/api/ai/analyze-area', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ location: locationQuery, radius_km: 250.0 })
+    });
+
+    if (!resp.ok) throw new Error('API failed');
+    const data = await resp.json();
+    const sum = data.threat_summary;
+    const tel = data.telemetry_snapshot;
+
+    outBox.innerHTML = `
+      <div class="hub-output-top">
+        <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-main);">${escapeHtml(data.location.name.split(',')[0])}</span>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span class="hub-score-num" style="color: ${sum.threat_color};">${sum.overall_threat_score}</span>
+          <span class="hub-tier-badge" style="background: ${sum.threat_color};">${sum.threat_tier}</span>
+        </div>
+      </div>
+      <div class="hub-driver-text">
+        Primary Driver: <strong>${sum.primary_threat_driver}</strong> (${sum.primary_threat_score}/100)
+      </div>
+      <div style="font-size: 0.72rem; color: var(--text-subtle); margin-top: 3px;">
+        Temp: ${tel.temperature_c.toFixed(1)}°C • Rain: ${tel.precipitation_rate_mm_h.toFixed(1)}mm/h • Wind: ${tel.wind_speed_kmh.toFixed(1)}km/h
+      </div>
+    `;
+  } catch (e) {
+    outBox.innerHTML = `
+      <div style="font-size: 0.74rem; color: #b91c1c;">Could not fetch threat data for ${escapeHtml(locationQuery)}.</div>
+    `;
+  }
+}
+
+function launchAIPredictionForAlert(alertId, alertObj) {
+  const alert = alertObj || (state.alerts && state.alerts.find(a => a.id === alertId));
+  if (!alert) return;
+
+  switchView('ai-predictor');
+
+  // Pre-fill fields in AI simulation
+  const typeSelect = document.getElementById('ai-disaster-type');
+  const locInput = document.getElementById('ai-location-name');
+  const valInput = document.getElementById('ai-current-val');
+  const areaQueryInput = document.getElementById('area-query-input');
+
+  if (typeSelect) {
+    if (alert.disaster_type === 'Flood Risk') typeSelect.value = 'Flood Risk';
+    else if (alert.disaster_type === 'Cyclone/Storm') typeSelect.value = 'Cyclone/Storm';
+    else if (alert.disaster_type === 'Earthquake') typeSelect.value = 'Earthquake';
+    else if (alert.disaster_type === 'Heatwave') typeSelect.value = 'Heatwave';
+  }
+
+  if (locInput) locInput.value = alert.location_name;
+  if (areaQueryInput) areaQueryInput.value = alert.location_name;
+
+  let val = 25.0;
+  if (alert.disaster_type === 'Earthquake') val = alert.magnitude || 5.5;
+  else if (alert.disaster_type === 'Cyclone/Storm') val = alert.wind_speed_kmh || 85.0;
+  else if (alert.disaster_type === 'Flood Risk') val = alert.rainfall_mm || 35.0;
+  else if (alert.disaster_type === 'Heatwave') val = alert.temperature_c || 42.0;
+
+  if (valInput) valInput.value = val;
+
+  // Run area threat analysis and 72h forward trajectory projection with exact coordinates
+  runAreaThreatAnalysis(alert.location_name, {
+    latitude: alert.latitude,
+    longitude: alert.longitude,
+    disaster_type: alert.disaster_type,
+    current_value: val
+  });
+}
+
+// ==========================================================================
+// AI SPECIFIC AREA DISASTER DETECTION & THREAT LEVEL ANALYZER
+// ==========================================================================
+
+function initAreaThreatAnalyzer() {
+  const analyzeBtn = document.getElementById('btn-analyze-area-threat');
+  const queryInput = document.getElementById('area-query-input');
+  const clearBtn = document.getElementById('btn-clear-area-query');
+  const presetChips = document.querySelectorAll('.area-chip');
+
+  if (analyzeBtn && queryInput) {
+    analyzeBtn.addEventListener('click', () => {
+      runAreaThreatAnalysis(queryInput.value.trim() || 'Mumbai');
+    });
+
+    queryInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        runAreaThreatAnalysis(queryInput.value.trim() || 'Mumbai');
+      }
+    });
+  }
+
+  if (clearBtn && queryInput) {
+    clearBtn.addEventListener('click', () => {
+      queryInput.value = '';
+      queryInput.focus();
+    });
+  }
+
+  if (presetChips && queryInput) {
+    presetChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        presetChips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        const loc = chip.getAttribute('data-location') || 'Mumbai';
+        queryInput.value = loc;
+        runAreaThreatAnalysis(loc);
+      });
+    });
+  }
+}
+
+async function runAreaThreatAnalysis(locationQuery, options = {}) {
+  const query = locationQuery || document.getElementById('area-query-input')?.value.trim() || 'Mumbai';
+  const analyzeBtn = document.getElementById('btn-analyze-area-threat');
+  const resultsPanel = document.getElementById('area-threat-results-panel');
+
+  if (analyzeBtn) {
+    analyzeBtn.disabled = true;
+    analyzeBtn.innerHTML = `
+      <svg class="spin-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+      <span>Analyzing Area Threat...</span>
+    `;
+  }
+
+  // Sync the input value if provided
+  const queryInput = document.getElementById('area-query-input');
+  if (queryInput && locationQuery) queryInput.value = locationQuery;
+
+  try {
+    const reqBody = { location: query, radius_km: 250.0 };
+    if (options.latitude != null && options.longitude != null) {
+      reqBody.latitude = options.latitude;
+      reqBody.longitude = options.longitude;
+    }
+
+    const resp = await fetch('/api/ai/analyze-area', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reqBody)
+    });
+
+    if (!resp.ok) {
+      throw new Error(`Server returned ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    renderAreaThreatAnalysis(data);
+
+    // Auto-synchronize Section B: Forward Disaster Trajectory & Risk Predictor
+    syncForwardPredictorWithArea(data, options);
+
+  } catch (err) {
+    console.error('Error analyzing area threat:', err);
+    if (resultsPanel) {
+      resultsPanel.innerHTML = `
+        <div class="detected-disasters-banner" style="background: #fef2f2; border-color: #fca5a5;">
+          <h5 style="color: #991b1b;">Threat Analysis Computation Error</h5>
+          <div style="font-size: 0.85rem; color: #b91c1c;">Could not complete threat assessment for "${escapeHtml(query)}". Check backend connectivity.</div>
+        </div>
+      `;
+    }
+  } finally {
+    if (analyzeBtn) {
+      analyzeBtn.disabled = false;
+      analyzeBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+        <span>Calculate Threat Level</span>
+      `;
+    }
+  }
+}
+
+function renderAreaThreatAnalysis(data) {
+  const panel = document.getElementById('area-threat-results-panel');
+  if (!panel) return;
+
+  const loc = data.location || {};
+  const sum = data.threat_summary || {};
+  const tel = data.telemetry_snapshot || {};
+  const haz = data.hazard_breakdown || {};
+  const disasters = data.detected_disasters || [];
+  const directives = data.mitigation_directives || [];
+
+  const getScoreColor = (score) => {
+    if (score >= 80) return '#991b1b';
+    if (score >= 60) return '#ef4444';
+    if (score >= 35) return '#eab308';
+    return '#10b981';
+  };
+
+  const detectedHtml = disasters.length > 0
+    ? `
+      <div class="detected-disasters-banner">
+        <h5>
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Active / Proximate Hazard Events Detected in Sector (${data.detected_disasters_count}):
+        </h5>
+        <div class="detected-chips-wrap">
+          ${disasters.map(d => `
+            <div class="detected-event-pill">
+              <strong>${d.disaster_type}</strong>: ${escapeHtml(d.title)} (${d.distance_km} km away) — <span class="status-badge ${d.severity.toLowerCase()}">${d.severity}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `
+    : `
+      <div class="detected-disasters-banner" style="background: #f0fdf4; border-color: #bbf7d0;">
+        <h5 style="color: #166534;">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          No Severe Impending Disaster Hypocenters Detected within 250km Radius
+        </h5>
+        <div style="font-size: 0.8rem; color: #15803d;">Sensor telemetry and weather stations report normal background conditions for this area.</div>
+      </div>
+    `;
+
+  const html = `
+    <div class="area-threat-top-banner">
+      <!-- Left: Composite Threat Meter -->
+      <div class="threat-score-gauge-card">
+        <div class="threat-gauge-label">Composite Area Threat Level</div>
+        <div class="threat-gauge-number" style="color: ${sum.threat_color || '#10b981'};">
+          ${sum.overall_threat_score}<span style="font-size: 1.5rem; color: var(--text-subtle);">/100</span>
+        </div>
+        <div class="threat-tier-pill" style="background: ${sum.threat_color || '#10b981'}; color: #ffffff;">
+          ${sum.threat_tier} THREAT
+        </div>
+        <div class="threat-driver-pill">
+          Primary Driver: <strong>${sum.primary_threat_driver}</strong> (${sum.primary_threat_score}/100)
+        </div>
+        <div style="font-size: 0.78rem; color: var(--text-subtle); margin-top: 8px;">
+          ${sum.tier_description || ''}
+        </div>
+      </div>
+
+      <!-- Right: Target Location & Real-Time Telemetry Snapshot -->
+      <div class="threat-context-card">
+        <div>
+          <div class="threat-location-title">
+            <div>
+              <h4 class="threat-area-title">${escapeHtml(loc.name)}</h4>
+              <div class="threat-location-sub">
+                Coordinates: [${(loc.latitude || 20).toFixed(4)}°, ${(loc.longitude || 78).toFixed(4)}°] • Elev: ${loc.elevation_m || 50}m • Evaluated: ${data.evaluated_at}
+              </div>
+            </div>
+            <span class="badge-pill" style="background: #e0f2fe; color: #0369a1; border-color: #bae6fd;">Live Telemetry</span>
+          </div>
+
+          <div class="threat-telemetry-tiles">
+            <div class="telemetry-tile">
+              <div class="telemetry-tile-lbl">Temperature</div>
+              <div class="telemetry-tile-val">${tel.temperature_c != null ? tel.temperature_c.toFixed(1) : '--'} °C</div>
+            </div>
+            <div class="telemetry-tile">
+              <div class="telemetry-tile-lbl">Humidity</div>
+              <div class="telemetry-tile-val">${tel.humidity_pct != null ? tel.humidity_pct.toFixed(0) : '--'} %</div>
+            </div>
+            <div class="telemetry-tile">
+              <div class="telemetry-tile-lbl">Precip Rate</div>
+              <div class="telemetry-tile-val">${tel.precipitation_rate_mm_h != null ? tel.precipitation_rate_mm_h.toFixed(1) : '--'} mm/h</div>
+            </div>
+            <div class="telemetry-tile">
+              <div class="telemetry-tile-lbl">24h Rainfall</div>
+              <div class="telemetry-tile-val">${tel.daily_precipitation_sum_mm != null ? tel.daily_precipitation_sum_mm.toFixed(1) : '--'} mm</div>
+            </div>
+            <div class="telemetry-tile">
+              <div class="telemetry-tile-lbl">Wind Speed</div>
+              <div class="telemetry-tile-val">${tel.wind_speed_kmh != null ? tel.wind_speed_kmh.toFixed(1) : '--'} km/h</div>
+            </div>
+            <div class="telemetry-tile">
+              <div class="telemetry-tile-lbl">Wind Gusts</div>
+              <div class="telemetry-tile-val">${tel.wind_gusts_kmh != null ? tel.wind_gusts_kmh.toFixed(1) : '--'} km/h</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          Current Atmospheric Condition: <strong>${tel.weather_condition || 'Normal'}</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Multi-Hazard Threat Score Breakdown -->
+    <div class="threat-hazard-bars-card">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin: 0;">Multi-Hazard Threat Breakdown for Area</h4>
+        <span style="font-size: 0.78rem; color: var(--text-subtle);">Calibrated across 5 major disaster vectors</span>
+      </div>
+
+      <div class="hazard-breakdown-grid">
+        ${Object.values(haz).map(h => {
+          const col = getScoreColor(h.score);
+          return `
+            <div class="hazard-row">
+              <div class="hazard-row-header">
+                <span class="hazard-row-name">${escapeHtml(h.name)}</span>
+                <span class="hazard-row-score" style="color: ${col};">${h.score} / 100 (${h.tier})</span>
+              </div>
+              <div class="hazard-track">
+                <div class="hazard-fill" style="width: ${Math.min(100, Math.max(5, h.score))}%; background: ${col};"></div>
+              </div>
+              <div class="hazard-indicator-hint">${escapeHtml(h.indicators[0] || '')}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+
+    ${detectedHtml}
+
+    <!-- AI Situational Analysis & Action Directives -->
+    <div class="ai-narrative-card">
+      <div class="ai-narrative-header">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="4"/></svg>
+        <span>AI Disaster Threat Analysis & Decision Support</span>
+      </div>
+      <div class="ai-narrative-body">
+        ${escapeHtml(data.ai_narrative || '')}
+      </div>
+
+      <div class="ai-directives-list">
+        <strong style="font-size: 0.85rem; color: #1b4332;">Actionable Area Directives & Priority Protocol:</strong>
+        ${directives.map(d => `<div class="directive-bullet">• ${escapeHtml(d)}</div>`).join('')}
+      </div>
+    </div>
+  `;
+
+  panel.innerHTML = html;
+}
+
+function syncForwardPredictorWithArea(data, options = {}) {
+  if (!data || !data.location) return;
+
+  const locInput = document.getElementById('ai-location-name');
+  const typeSelect = document.getElementById('ai-disaster-type');
+  const valInput = document.getElementById('ai-current-val');
+
+  if (locInput) locInput.value = data.location.name;
+
+  let dType = options.disaster_type || 'Flood Risk';
+  if (!options.disaster_type) {
+    const driver = (data.threat_summary?.primary_threat_driver || '').toLowerCase();
+    if (driver.includes('cyclone') || driver.includes('storm') || driver.includes('wind')) {
+      dType = 'Cyclone/Storm';
+    } else if (driver.includes('seismic') || driver.includes('earthquake')) {
+      dType = 'Earthquake';
+    } else if (driver.includes('heat')) {
+      dType = 'Heatwave';
+    } else if (driver.includes('flood') || driver.includes('rain')) {
+      dType = 'Flood Risk';
+    }
+  }
+
+  if (typeSelect) typeSelect.value = dType;
+
+  // Determine current telemetry reading
+  let currentVal = options.current_value;
+  if (currentVal == null) {
+    const tel = data.telemetry_snapshot || {};
+    if (dType === 'Flood Risk') {
+      currentVal = (tel.precipitation_rate_mm_h && tel.precipitation_rate_mm_h > 0) ? tel.precipitation_rate_mm_h : 28.5;
+    } else if (dType === 'Cyclone/Storm') {
+      currentVal = (tel.wind_speed_kmh && tel.wind_speed_kmh > 0) ? tel.wind_speed_kmh : 85.0;
+    } else if (dType === 'Heatwave') {
+      currentVal = (tel.temperature_c && tel.temperature_c > 0) ? tel.temperature_c : 42.0;
+    } else if (dType === 'Earthquake') {
+      const quakes = (data.detected_disasters || []).filter(d => d.disaster_type === 'Earthquake');
+      currentVal = quakes.length > 0 && quakes[0].magnitude ? quakes[0].magnitude : 5.8;
+    } else {
+      currentVal = 25.0;
+    }
+  }
+
+  if (valInput) valInput.value = currentVal.toFixed(1);
+
+  // Trigger forward simulation with exact coordinates
+  runAIPrediction({
+    disaster_type: dType,
+    location_name: data.location.name,
+    latitude: data.location.latitude,
+    longitude: data.location.longitude,
+    current_value: currentVal
+  });
+}
+
 function initAIPredictor() {
+  initAreaThreatAnalyzer();
+
   const scenarioBtns = document.querySelectorAll('.scenario-btn');
   scenarioBtns.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1171,8 +1693,15 @@ function initAIPredictor() {
         if (typeSelect) typeSelect.value = scen.type;
         if (locInput) locInput.value = scen.name;
         if (valInput) valInput.value = scen.val;
+
+        runAIPrediction({
+          disaster_type: scen.type,
+          location_name: scen.name,
+          latitude: scen.lat,
+          longitude: scen.lon,
+          current_value: scen.val
+        });
       }
-      runAIPrediction();
     });
   });
 
@@ -1204,7 +1733,25 @@ function initAIPredictor() {
   }
 }
 
-async function runAIPrediction() {
+const cityCoordsLookup = {
+  'mumbai': [18.9667, 72.8333],
+  'delhi': [28.6139, 77.2090],
+  'new delhi': [28.6139, 77.2090],
+  'guwahati': [26.1445, 91.7362],
+  'assam': [26.1445, 91.7362],
+  'kolkata': [22.5726, 88.3639],
+  'puri': [19.8135, 85.8312],
+  'odisha': [19.8135, 85.8312],
+  'shimla': [31.1048, 77.1734],
+  'chennai': [13.0827, 80.2707],
+  'kochi': [9.9312, 76.2673],
+  'kerala': [9.9312, 76.2673],
+  'nagpur': [21.1458, 79.0882],
+  'vidarbha': [21.1458, 79.0882],
+  'tokyo': [35.6762, 139.6503]
+};
+
+async function runAIPrediction(opts = {}) {
   const runBtn = document.getElementById('btn-run-ai-prediction');
   if (runBtn) {
     runBtn.innerHTML = `
@@ -1214,20 +1761,46 @@ async function runAIPrediction() {
     runBtn.disabled = true;
   }
 
-  const dType = document.getElementById('ai-disaster-type')?.value || 'Flood Risk';
-  const locName = document.getElementById('ai-location-name')?.value || 'Brahmaputra Basin, Guwahati, Assam';
-  const currVal = parseFloat(document.getElementById('ai-current-val')?.value || '25.0');
-  const horizon = parseInt(document.getElementById('ai-forecast-horizon')?.value || '72');
+  // Clear previous error alerts if any
+  const oldErr = document.getElementById('ai-pred-error-alert');
+  if (oldErr) oldErr.remove();
 
-  let lat = 26.1445;
-  let lon = 91.7362;
-  const activeScen = document.querySelector('.scenario-btn.active');
-  if (activeScen) {
-    const scen = aiScenariosMap[activeScen.getAttribute('data-scenario')];
-    if (scen && scen.name === locName) {
-      lat = scen.lat;
-      lon = scen.lon;
+  const dType = opts.disaster_type || document.getElementById('ai-disaster-type')?.value || 'Flood Risk';
+  const locName = opts.location_name || document.getElementById('ai-location-name')?.value || 'Brahmaputra Basin, Guwahati, Assam';
+  const currVal = opts.current_value != null ? opts.current_value : parseFloat(document.getElementById('ai-current-val')?.value || '25.0');
+  const horizon = opts.horizon_hours || parseInt(document.getElementById('ai-forecast-horizon')?.value || '72');
+
+  let lat = opts.latitude;
+  let lon = opts.longitude;
+
+  // Resolve coordinates from scenario if not provided
+  if (lat == null || lon == null) {
+    const activeScen = document.querySelector('.scenario-btn.active');
+    if (activeScen) {
+      const scen = aiScenariosMap[activeScen.getAttribute('data-scenario')];
+      if (scen && scen.name === locName) {
+        lat = scen.lat;
+        lon = scen.lon;
+      }
     }
+  }
+
+  // Resolve coordinates from known city keywords
+  if (lat == null || lon == null) {
+    const locLower = locName.toLowerCase();
+    for (const [key, coords] of Object.entries(cityCoordsLookup)) {
+      if (locLower.includes(key)) {
+        lat = coords[0];
+        lon = coords[1];
+        break;
+      }
+    }
+  }
+
+  // Safe fallback default coordinates
+  if (lat == null || lon == null) {
+    lat = 26.1445;
+    lon = 91.7362;
   }
 
   try {
@@ -1252,6 +1825,17 @@ async function runAIPrediction() {
     renderAIPrediction(data);
   } catch (err) {
     console.error('Error generating AI prediction:', err);
+    const resultsPanel = document.getElementById('ai-results-panel');
+    if (resultsPanel) {
+      const alertDiv = document.createElement('div');
+      alertDiv.id = 'ai-pred-error-alert';
+      alertDiv.className = 'ai-error-banner';
+      alertDiv.innerHTML = `
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span><strong>AI Prediction Error:</strong> Could not complete projection (${escapeHtml(err.message)}). Please check inputs and retry.</span>
+      `;
+      resultsPanel.insertBefore(alertDiv, resultsPanel.firstChild);
+    }
   } finally {
     if (runBtn) {
       runBtn.innerHTML = `
@@ -1285,8 +1869,16 @@ function renderAIPrediction(data) {
   if (archEl) archEl.textContent = data.model_name || 'Autoregressive Ensemble AI';
   if (unitTagEl) unitTagEl.textContent = `Unit: ${data.timeline[0]?.value_unit || 'Metric'}`;
 
-  // 2. Render Trajectory Chart
-  renderAITrajectoryChart(data);
+  // 2. Render Trajectory Chart (Canvas with SVG fallback)
+  try {
+    renderAITrajectoryChart(data);
+  } catch (chartErr) {
+    console.warn('Canvas trajectory chart failed, falling back to SVG renderer:', chartErr);
+    const canvas = document.getElementById('ai-trajectory-chart');
+    if (canvas) {
+      renderSvgTrajectoryFallback(canvas, data);
+    }
+  }
 
   // 3. Render Explainable Feature Importance
   const featContainer = document.getElementById('ai-features-container');
@@ -1339,10 +1931,10 @@ function renderAIPrediction(data) {
       rowsHtml += `
         <tr>
           <td><strong>T+${step.step_hour}h</strong></td>
-          <td>${step.timestamp}</td>
-          <td><span class="mono-value">${step.predicted_value} ${step.value_unit}</span></td>
+          <td>${escapeHtml(step.timestamp)}</td>
+          <td><span class="mono-value">${step.predicted_value} ${escapeHtml(step.value_unit)}</span></td>
           <td><strong>${step.predicted_risk_score} / 10</strong></td>
-          <td><span class="status-badge ${sevClass}">${step.predicted_severity}</span></td>
+          <td><span class="status-badge ${sevClass}">${escapeHtml(step.predicted_severity)}</span></td>
           <td><span class="text-subtle">[${step.confidence_interval_low} — ${step.confidence_interval_high}]</span></td>
         </tr>
       `;
@@ -1351,9 +1943,99 @@ function renderAIPrediction(data) {
   }
 }
 
+function renderSvgTrajectoryFallback(canvas, data) {
+  if (!canvas || !data || !data.timeline) return;
+
+  const container = canvas.parentElement;
+  if (!container) return;
+
+  const width = Math.max(container.clientWidth || 700, 400);
+  const height = 240;
+  const padding = { top: 28, right: 35, bottom: 35, left: 45 };
+  const chartW = width - padding.left - padding.right;
+  const chartH = height - padding.top - padding.bottom;
+
+  const steps = data.timeline;
+  const n = steps.length;
+  if (n === 0) return;
+
+  const maxPhys = Math.max(...steps.map(s => s.predicted_value), 10);
+  const minPhys = Math.min(...steps.map(s => s.predicted_value), 0);
+
+  const getX = (i) => padding.left + (i / (n - 1)) * chartW;
+  const getYRisk = (val) => padding.top + chartH - (Math.min(10, Math.max(0, val)) / 10) * chartH;
+  const getYPhys = (val) => padding.top + chartH - ((val - minPhys) / (maxPhys - minPhys || 1)) * chartH;
+
+  const riskPoints = steps.map((s, i) => `${getX(i).toFixed(1)},${getYRisk(s.predicted_risk_score).toFixed(1)}`).join(' ');
+  const physPoints = steps.map((s, i) => `${getX(i).toFixed(1)},${getYPhys(s.predicted_value).toFixed(1)}`).join(' ');
+
+  const areaD = `M ${getX(0).toFixed(1)},${getYRisk(steps[0].predicted_risk_score).toFixed(1)} ` +
+    steps.map((s, i) => `L ${getX(i).toFixed(1)},${getYRisk(s.predicted_risk_score).toFixed(1)}`).join(' ') +
+    ` L ${getX(n - 1).toFixed(1)},${padding.top + chartH} L ${getX(0).toFixed(1)},${padding.top + chartH} Z`;
+
+  let gridLines = '';
+  for (let r = 0; r <= 10; r += 2) {
+    const y = getYRisk(r);
+    gridLines += `<line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>`;
+    gridLines += `<text x="${padding.left - 8}" y="${y + 4}" fill="#6b7280" font-size="10" font-family="JetBrains Mono" text-anchor="end">${r}</text>`;
+  }
+
+  let xLabels = '';
+  steps.forEach((s, i) => {
+    const x = getX(i);
+    xLabels += `<line x1="${x}" y1="${padding.top + chartH}" x2="${x}" y2="${padding.top + chartH + 4}" stroke="#9ca3af" stroke-width="1"/>`;
+    xLabels += `<text x="${x}" y="${padding.top + chartH + 18}" fill="#4b5563" font-size="10" font-family="JetBrains Mono" text-anchor="middle">T+${s.step_hour}h</text>`;
+  });
+
+  const pointsHtml = steps.map((s, i) => {
+    const x = getX(i);
+    const y = getYRisk(s.predicted_risk_score);
+    return `<circle cx="${x}" cy="${y}" r="4" fill="#d90429" stroke="#ffffff" stroke-width="2"><title>T+${s.step_hour}h: Risk ${s.predicted_risk_score}/10, Val ${s.predicted_value} ${s.value_unit}</title></circle>`;
+  }).join('');
+
+  canvas.style.display = 'none';
+
+  const existingSvg = container.querySelector('.ai-svg-trajectory-wrapper');
+  if (existingSvg) existingSvg.remove();
+
+  const svgDiv = document.createElement('div');
+  svgDiv.className = 'ai-svg-trajectory-wrapper';
+  svgDiv.innerHTML = `
+    <svg width="100%" height="240" viewBox="0 0 ${width} 240" style="display:block; overflow:visible;">
+      <defs>
+        <linearGradient id="riskGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#d90429" stop-opacity="0.25"/>
+          <stop offset="100%" stop-color="#d90429" stop-opacity="0.02"/>
+        </linearGradient>
+      </defs>
+      ${gridLines}
+      ${xLabels}
+      <path d="${areaD}" fill="url(#riskGrad)"/>
+      <polyline points="${physPoints}" fill="none" stroke="#2563eb" stroke-width="2" stroke-dasharray="5,4"/>
+      <polyline points="${riskPoints}" fill="none" stroke="#d90429" stroke-width="2.5"/>
+      ${pointsHtml}
+      <text x="${padding.left}" y="16" fill="#d90429" font-size="11" font-weight="bold" font-family="Plus Jakarta Sans">● Projected Risk (0-10)</text>
+      <text x="${padding.left + 165}" y="16" fill="#2563eb" font-size="11" font-weight="bold" font-family="Plus Jakarta Sans">--- Physical Metric (${escapeHtml(data.timeline[0]?.value_unit || 'Val')})</text>
+    </svg>
+  `;
+  container.appendChild(svgDiv);
+}
+
 function renderAITrajectoryChart(data) {
   const canvas = document.getElementById('ai-trajectory-chart');
   if (!canvas) return;
+
+  const container = canvas.parentElement;
+  if (container) {
+    const existingSvg = container.querySelector('.ai-svg-trajectory-wrapper');
+    if (existingSvg) existingSvg.remove();
+  }
+  canvas.style.display = 'block';
+
+  if (typeof Chart === 'undefined') {
+    renderSvgTrajectoryFallback(canvas, data);
+    return;
+  }
 
   const labels = data.timeline.map(s => `T+${s.step_hour}h`);
   const riskScores = data.timeline.map(s => s.predicted_risk_score);
@@ -1363,6 +2045,7 @@ function renderAITrajectoryChart(data) {
 
   if (state.aiChartInstance) {
     state.aiChartInstance.destroy();
+    state.aiChartInstance = null;
   }
 
   state.aiChartInstance = new Chart(canvas, {
@@ -1470,4 +2153,12 @@ function renderAITrajectoryChart(data) {
     }
   });
 }
+
+// Global exposure on window for seamless inter-component communication and inspection
+window.state = state;
+window.switchView = switchView;
+window.runAIPrediction = runAIPrediction;
+window.runAreaThreatAnalysis = runAreaThreatAnalysis;
+window.launchAIPredictionForAlert = launchAIPredictionForAlert;
+
 

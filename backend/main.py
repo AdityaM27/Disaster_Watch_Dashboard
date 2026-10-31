@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
 # Load environment configuration
 dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
@@ -43,7 +43,8 @@ from models import (
     RefreshLog,
     RiskExplanation,
     DashboardSummary,
-    AIPredictionRequest
+    AIPredictionRequest,
+    AreaAnalysisRequest
 )
 from services.risk_engine import (
     STANDARD_DISCLAIMER,
@@ -66,6 +67,10 @@ from services.gdacs import fetch_gdacs_global_events
 from services.ai_predictor import (
     predict_disaster_future,
     get_preset_disaster_scenarios
+)
+from services.area_threat import (
+    perform_area_threat_analysis,
+    get_preset_threat_areas
 )
 
 # Configure structured logging
@@ -674,6 +679,54 @@ async def get_active_ai_predictions():
     return {"count": len(predictions), "predictions": predictions}
 
 
+# ==============================================================================
+# AI SPECIFIC AREA DISASTER ANALYSIS & THREAT LEVEL CALCULATION
+# ==============================================================================
+
+@app.post("/api/ai/analyze-area", tags=["AI Threat Analyzer"])
+async def analyze_area_threat(req: AreaAnalysisRequest):
+    """
+    Executes the AI Specific Area Disaster Detection & Threat Level Calculation Model.
+    Resolves location coordinates, ingests real-time weather telemetry, queries active proximate
+    disaster alerts (within radius_km), and calculates composite Threat Level (0-100) and multi-hazard breakdown.
+    """
+    result = await perform_area_threat_analysis(
+        query=req.location,
+        lat=req.latitude,
+        lon=req.longitude,
+        radius_km=req.radius_km or 250.0
+    )
+    return result
+
+
+@app.get("/api/ai/analyze-area", tags=["AI Threat Analyzer"])
+async def get_area_threat_get(
+    location: Optional[str] = Query("Mumbai", description="City, district, or area name"),
+    lat: Optional[float] = Query(None, description="Optional latitude"),
+    lon: Optional[float] = Query(None, description="Optional longitude"),
+    radius_km: float = Query(250.0, description="Proximity search radius in km")
+):
+    """
+    GET-compatible endpoint for AI Specific Area Disaster Detection & Threat Level Calculation.
+    """
+    result = await perform_area_threat_analysis(
+        query=location,
+        lat=lat,
+        lon=lon,
+        radius_km=radius_km
+    )
+    return result
+
+
+@app.get("/api/ai/threat-areas", tags=["AI Threat Analyzer"])
+async def list_preset_threat_areas():
+    """
+    Returns curated preset areas for quick testing of the AI Threat Level Analyzer.
+    """
+    areas = get_preset_threat_areas()
+    return {"count": len(areas), "areas": areas}
+
+
 
 # Mount Frontend Static Files
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend")
@@ -684,5 +737,17 @@ if os.path.exists(FRONTEND_DIR):
     async def serve_index():
         index_file = os.path.join(FRONTEND_DIR, "index.html")
         if os.path.exists(index_file):
-            return FileResponse(index_file)
+            return FileResponse(
+                index_file,
+                headers={
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0"
+                }
+            )
         return {"message": "Frontend index.html is being prepared."}
+
+    @app.get("/ai", include_in_schema=False)
+    @app.get("/ai-predictor", include_in_schema=False)
+    async def redirect_to_ai():
+        return RedirectResponse(url="/#ai-predictor")

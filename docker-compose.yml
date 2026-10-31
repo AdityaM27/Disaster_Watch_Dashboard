@@ -1,8 +1,6 @@
 # ==============================================================================
 # EXP-9: Containerization - Docker Compose multi-service deployment
 # ==============================================================================
-version: "3.8"
-
 services:
   disasterwatch-dashboard:
     build:
@@ -13,10 +11,18 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/app/data
+      - ./backend:/app/backend
+      - ./frontend:/app/frontend
     restart: unless-stopped
     environment:
       - PORT=8000
       - DATABASE_PATH=/app/data/disasterwatch.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
   disasterwatch-analytics:
     build:
@@ -29,6 +35,14 @@ services:
       - "8501:8501"
     volumes:
       - ./data:/app/data
+      - ./backend:/app/backend
+      - ./streamlit_dashboard.py:/app/streamlit_dashboard.py
     restart: unless-stopped
     depends_on:
       - disasterwatch-dashboard
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s

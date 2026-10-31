@@ -16,7 +16,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   
   <!-- Custom Stylesheet (Pastel Green Theme) -->
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/styles.css?v=2.2.0" />
 </head>
 <body>
   <!-- Application Shell -->
@@ -45,9 +45,10 @@
           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
           Data Sources
         </button>
-        <button class="nav-tab" data-view="ai-predictor" role="tab" aria-selected="false">
+        <button class="nav-tab nav-tab-ai" data-view="ai-predictor" role="tab" aria-selected="false">
           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="4"/></svg>
-          AI Disaster Predictor
+          <span>AI Disaster Predictor</span>
+          <span class="nav-ai-chip">NEW</span>
         </button>
       </nav>
     </header>
@@ -61,6 +62,10 @@
       <div class="live-notice-pill">
         <span>Worldwide Coverage — Real instrumental events from USGS, Open-Meteo & United Nations GDACS</span>
       </div>
+      <button class="sub-header-ai-btn" id="btn-quick-nav-ai" title="Launch AI Future Disaster Predictor & Threat Engine">
+        <span class="ai-pulse-dot"></span>
+        <span>Launch AI Future Predictor &rarr;</span>
+      </button>
     </div>
 
     <!-- MAIN VIEW CONTAINER -->
@@ -222,6 +227,25 @@
           <!-- CENTER: INTERACTIVE MAP & TELEMETRY -->
           <div class="map-stage-container">
             
+            <!-- Quick AI Future Predictor Bar on Main Dashboard -->
+            <div class="dash-ai-quick-banner" id="dash-ai-quick-banner">
+              <div class="dash-ai-banner-left">
+                <span class="ai-pulse-dot"></span>
+                <strong>AI Threat & Future Disaster Predictor (EXP-12)</strong>
+                <span class="badge-pill" style="background:#dcfce7; color:#15803d; border-color:#86efac; font-size:0.68rem; font-weight:700;">LIVE ENGINE</span>
+                <span class="banner-subtext">Multi-horizon 72h hazard progression & composite area threat level (0–100)</span>
+              </div>
+              <div class="dash-ai-banner-actions">
+                <button class="btn-banner-ai-chip" data-location="Mumbai">🌊 Mumbai</button>
+                <button class="btn-banner-ai-chip" data-location="New Delhi">⚡ Delhi</button>
+                <button class="btn-banner-ai-chip" data-location="Puri">🌀 Cyclone Puri</button>
+                <button class="btn-banner-ai-chip" data-location="Guwahati">🌧️ Guwahati</button>
+                <button class="btn-banner-ai-launch" id="btn-banner-launch-ai">
+                  <span>Open AI Suite &rarr;</span>
+                </button>
+              </div>
+            </div>
+
             <!-- Map Top Bar -->
             <div class="map-top-bar">
               <div class="map-status-pill">
@@ -323,6 +347,40 @@
 
             </div>
 
+            <!-- MAIN SERVER AI PREDICTOR & THREAT HUB -->
+            <div class="ai-sidebar-hub-card">
+              <div class="hub-header">
+                <div class="hub-title">
+                  <span class="ai-pulse-dot"></span>
+                  <strong>AI Threat & Future Predictor Hub</strong>
+                </div>
+                <span class="badge-pill" style="background:#dcfce7; color:#15803d; border-color:#86efac; font-size:0.68rem; font-weight:700;">LIVE ENGINE</span>
+              </div>
+              <p class="hub-sub">Instant AI area threat score & 72h multi-step forward disaster prediction:</p>
+              
+              <div class="hub-search-row">
+                <input type="text" id="hub-area-input" placeholder="Enter area (e.g. Mumbai, Delhi, Shimla...)" value="Mumbai" />
+                <button id="btn-hub-calc" class="btn-hub-action" title="Calculate Threat Level with AI">⚡ Analyze</button>
+              </div>
+              
+              <div class="hub-chips-row">
+                <button class="hub-chip active" data-city="Mumbai">Mumbai</button>
+                <button class="hub-chip" data-city="New Delhi">Delhi</button>
+                <button class="hub-chip" data-city="Guwahati">Guwahati</button>
+                <button class="hub-chip" data-city="Shimla">Shimla</button>
+                <button class="hub-chip" data-city="Kolkata">Kolkata</button>
+              </div>
+
+              <!-- Quick Threat Output Result Box -->
+              <div id="hub-threat-output" class="hub-threat-output">
+                <!-- Dynamically populated by app.js -->
+              </div>
+
+              <button id="btn-hub-open-full-predictor" class="btn-hub-full-link">
+                <span>🚀 Launch 72-Hour Forward Simulation &rarr;</span>
+              </button>
+            </div>
+
             <!-- Recent Alerts List -->
             <div class="alerts-feed-card">
               <div class="alerts-feed-header">
@@ -358,6 +416,7 @@
               </div>
               <div class="preview-actions">
                 <button class="btn btn-sm btn-primary" id="prev-view-details-btn">View Full Details</button>
+                <button class="btn btn-sm btn-ai-action" id="prev-ai-pred-btn" title="Simulate 72h future disaster trajectory">🤖 Run AI Prediction</button>
                 <a href="#" target="_blank" class="btn btn-sm btn-secondary" id="prev-pdf-btn" style="display:none;" title="Download Area Assessment PDF">📄 Area PDF</a>
                 <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary" id="prev-source-link">Source &rarr;</a>
               </div>
@@ -469,6 +528,24 @@
                 </div>
               </div>
 
+              <!-- AI Future Disaster Predictor Integration Box -->
+              <div class="details-section-box ai-projection-cta-box" style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: var(--radius-md); padding: 1.25rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                  <div>
+                    <h3 style="font-size: 1.05rem; font-weight: 700; color: #166534; display: flex; align-items: center; gap: 8px; margin: 0;">
+                      <span class="ai-pulse-dot"></span>
+                      Autonomous AI 72-Hour Forward Trajectory Prediction
+                    </h3>
+                    <p style="font-size: 0.85rem; color: #15803d; margin-top: 4px; margin-bottom: 0;">
+                      Model multi-step forward disaster escalation, peak inundation/wind impact window, and emergency safety directives for this location.
+                    </p>
+                  </div>
+                  <button class="btn btn-primary" id="det-launch-ai-pred-btn" style="background: #166534; border-color: #166534; white-space: nowrap;">
+                    🚀 Simulate 72h Forward Trajectory &rarr;
+                  </button>
+                </div>
+              </div>
+
               <!-- Required Mandatory Disclaimer in Alert Details -->
               <div class="mandatory-disclaimer-card">
                 <div class="disclaimer-header">
@@ -574,6 +651,60 @@
               Simulates forward multi-horizon disaster evolution (up to 72 hours) using autoregressive hydrological unit hydrographs,
               Kaplan-DeMaria cyclone intensification models, and Modified Omori-Utsu statistical seismology equations.
             </p>
+          </div>
+
+          <!-- ================= SECTION A: SPECIFIC AREA AI THREAT LEVEL ANALYZER ================= -->
+          <div class="ai-area-analyzer-section">
+            <div class="ai-card area-search-card">
+              <div class="ai-card-header">
+                <div>
+                  <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" style="color: #2b7a4b;"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                    Specific Area Disaster & Threat Level Analyzer
+                  </h3>
+                  <p class="ai-card-sub" style="margin-top: 4px;">Query any specific city, district, basin, or region to detect active hazards, ingest live telemetry, and calculate the composite threat level (0–100).</p>
+                </div>
+                <span class="badge-pill live-pill">Real-Time Ingestion</span>
+              </div>
+
+              <!-- Search Bar & Controls -->
+              <div class="area-search-row">
+                <div class="area-input-wrapper">
+                  <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input type="text" id="area-query-input" placeholder="Enter specific area name (e.g., Mumbai, Shimla, Kolkata, Delhi-NCR, Guwahati, Kochi, Puri, Tokyo...)" value="Mumbai" />
+                  <button id="btn-clear-area-query" class="search-clear-btn" title="Clear">&times;</button>
+                </div>
+                <button id="btn-analyze-area-threat" class="btn-primary-action area-run-btn">
+                  <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                  <span>Calculate Threat Level</span>
+                </button>
+              </div>
+
+              <!-- Quick Jump Preset Chips -->
+              <div class="area-quick-presets" id="area-quick-presets">
+                <span class="presets-label">Quick Scan Areas:</span>
+                <button class="area-chip active" data-location="Mumbai">Mumbai (Coast)</button>
+                <button class="area-chip" data-location="New Delhi">Delhi-NCR (Seismic IV)</button>
+                <button class="area-chip" data-location="Guwahati">Guwahati (Brahmaputra Flood)</button>
+                <button class="area-chip" data-location="Kolkata">Kolkata (Bay of Bengal)</button>
+                <button class="area-chip" data-location="Puri">Puri (Odisha Cyclone Belt)</button>
+                <button class="area-chip" data-location="Shimla">Shimla (Himalayan Fault)</button>
+                <button class="area-chip" data-location="Kochi">Kochi (Kerala Inundation)</button>
+                <button class="area-chip" data-location="Nagpur">Nagpur (Vidarbha Thermal)</button>
+                <button class="area-chip" data-location="Tokyo">Tokyo (Pacific Ring of Fire)</button>
+              </div>
+            </div>
+
+            <!-- Dynamic Area Threat Output Panel -->
+            <div class="area-threat-results-panel" id="area-threat-results-panel">
+              <!-- Rendered dynamically by app.js -->
+            </div>
+          </div>
+
+          <div class="section-divider-title">
+            <div class="divider-line"></div>
+            <span>Forward Trajectory Modeling (EXP-12)</span>
+            <div class="divider-line"></div>
           </div>
 
           <!-- Scenario Selection & Configuration Grid -->
@@ -802,9 +933,14 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <!-- Leaflet MarkerCluster JS -->
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Local Chart.js with CDN Fallback -->
+  <script src="/static/chart.umd.min.js"></script>
+  <script>
+    if (typeof Chart === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"><\/script>');
+    }
+  </script>
   <!-- Main Frontend Application Logic -->
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=2.2.0"></script>
 </body>
 </html>
